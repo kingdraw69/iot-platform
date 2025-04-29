@@ -13,11 +13,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            DeviceTypeSeeder::class,
+            SensorTypeSeeder::class,
+            AlertRuleSeeder::class,
         ]);
+
+        \App\Models\Classroom::factory(10)->create();
+        \App\Models\Device::factory(30)->create();
+        \App\Models\Sensor::factory(100)->create();
+        \App\Models\SensorReading::factory(1000)->create();
+        \App\Models\Alert::factory(200)->create();
+        \App\Models\DeviceStatusLog::factory(500)->create();
+        /** 
+        *User::factory()->create([
+        *    'name' => 'Test User',
+        *    'email' => 'test@example.com',
+        * ]);
+        */
     }
 }
