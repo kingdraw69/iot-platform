@@ -18,7 +18,14 @@ class Device extends Model
         'status' => 'boolean',
         'last_communication' => 'datetime',
     ];
-
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($device) {
+            $device->api_key = bin2hex(random_bytes(32)); // Genera una clave de 64 caracteres
+        });
+    }
     public function deviceType()
     {
         return $this->belongsTo(DeviceType::class);

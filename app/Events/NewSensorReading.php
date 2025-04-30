@@ -24,7 +24,7 @@ class NewSensorReading implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new Channel('sensor-readings');
+        return new Channel('sensor.'.$this->reading->sensor_id);
     }
 
     public function broadcastWith()

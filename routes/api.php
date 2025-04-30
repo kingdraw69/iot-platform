@@ -21,3 +21,6 @@ Route::prefix('sensors')->group(function () {
     Route::get('/{sensor}/readings', [SensorApiController::class, 'readings']);
     Route::post('/{sensor}/readings', [SensorApiController::class, 'storeReading']);
 });
+
+Route::post('/sensors/{sensor}/readings', [SensorDataController::class, 'store'])
+    ->name('api.sensors.readings.store');

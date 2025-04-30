@@ -23,12 +23,15 @@ class SensorController extends Controller
     {
         // Obtener dispositivos activos con sus aulas
         $devices = Device::with('classroom')
-                    ->where('status', true)
-                    ->orderBy('name')
-                    ->get();
-                    
-        $sensorTypes = SensorType::orderBy('name')->get();
+            ->where('status', true) // Solo dispositivos activos
+            ->orderBy('name')
+            ->get();
         
+        $sensorTypes = SensorType::orderBy('name')->get();
+
+        // Debug: Verificar qué dispositivos se están obteniendo
+        Log::debug('Dispositivos disponibles para sensor:', $devices->toArray());
+
         return view('sensors.create', compact('devices', 'sensorTypes'));
     }
 

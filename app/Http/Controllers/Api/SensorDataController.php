@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Events\NewSensorReading;
 
-class SensorApiController extends Controller
+class SensorDataController extends Controller
 {
     public function store(Request $request, Sensor $sensor)
     {
