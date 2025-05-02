@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Models\Sensor;
-use App\Models\SensorReading;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +43,27 @@ class SensorApiController extends Controller
             Log::error("Error saving sensor reading: " . $e->getMessage());
             return response()->json([
                 'error' => 'Error processing reading',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function readings(Sensor $sensor)
+    {
+        try {
+            // Get readings with pagination
+            $readings = $sensor->readings()
+                ->orderBy('reading_time', 'desc')
+                ->paginate(15); // Adjust pagination as needed
+
+            return response()->json([
+                'sensor' => $sensor,
+                'readings' => $readings
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetching sensor readings: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Error retrieving readings',
                 'details' => $e->getMessage()
             ], 500);
         }

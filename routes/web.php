@@ -27,6 +27,7 @@ Route::post('devices/{device}/toggle-status', [DeviceController::class, 'toggleS
 
 // Sensores
 Route::resource('sensors', SensorController::class);
+Route::get('sensors/{sensor}/edit', [SensorController::class, 'edit'])->name('sensors.edit');
 
 // Alertas
 Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');

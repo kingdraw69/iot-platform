@@ -52,7 +52,7 @@
                             <a href="#" class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ $reading->sensor->name }}</h6>
-                                    <small>{{ $reading->reading_time->diffForHumans() }}</small>
+                                    <small>{{ \Carbon\Carbon::parse($reading->reading_time)->diffForHumans() }}</small>
                                 </div>
                                 <p class="mb-1">Valor: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</p>
                                 <small>Aula: {{ $reading->sensor->device->classroom->name }}</small>
@@ -66,6 +66,9 @@
 </div>
 
 @push('scripts')
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
 <script>
     // Configuración del gráfico en tiempo real
     const chart = LightweightCharts.createChart(document.getElementById('realTimeChart'), {
@@ -83,6 +86,8 @@
         },
         timeScale: {
             borderColor: '#ccc',
+            timeVisible: true,
+            secondsVisible: false,
         },
     });
 
@@ -94,18 +99,28 @@
     // Datos iniciales
     const initialData = [
         @foreach($latestReadings as $reading)
-        { time: '{{ $reading->reading_time->toDateTimeString() }}', value: {{ $reading->value }} },
+        { 
+            time: '{{ \Carbon\Carbon::parse($reading->reading_time)->toDateTimeString() }}', 
+            value: {{ $reading->value }} 
+        },
         @endforeach
     ];
     
     lineSeries.setData(initialData);
+    chart.timeScale().fitContent();
+
+    // Configurar Pusher para actualizaciones en tiempo real
+    const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
+        cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
+        encrypted: true
+    });
 
     // Escuchar nuevos datos en tiempo real
     const channel = pusher.subscribe('sensor-readings');
     channel.bind('App\\Events\\NewSensorReading', function(data) {
         lineSeries.update({
             time: data.reading_time,
-            value: data.value
+            value: parseFloat(data.value)
         });
     });
 </script>

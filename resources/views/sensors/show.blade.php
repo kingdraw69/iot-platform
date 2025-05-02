@@ -37,7 +37,7 @@
                 <h5>Últimas Lecturas</h5>
             </div>
             <div class="card-body">
-                <table class="table table-sm">
+                <table class="table table-sm" id="readingsTable">
                     <thead>
                         <tr>
                             <th>Valor</th>
@@ -48,7 +48,7 @@
                         @foreach($readings as $reading)
                         <tr>
                             <td>{{ $reading->value }} {{ $sensor->sensorType->unit }}</td>
-                            <td>{{ $reading->reading_time->format('d/m/Y H:i') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($reading->reading_time)->format('d/m/Y H:i') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -60,8 +60,21 @@
 </div>
 
 @push('scripts')
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
 <script>
-    // Configuración del gráfico del sensor
+    // Datos iniciales para el gráfico
+    const initialData = [
+        @foreach($readings->take(100) as $reading)
+        { 
+            time: '{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d H:i:s') }}', 
+            value: {{ $reading->value }} 
+        },
+        @endforeach
+    ];
+
+    // Configuración del gráfico
     const chart = LightweightCharts.createChart(document.getElementById('sensorChart'), {
         layout: {
             backgroundColor: '#ffffff',
@@ -77,6 +90,11 @@
         },
         timeScale: {
             borderColor: '#ccc',
+            timeVisible: true,
+            secondsVisible: false,
+        },
+        rightPriceScale: {
+            borderColor: '#ccc',
         },
     });
 
@@ -84,26 +102,52 @@
         color: '#2962FF',
         lineWidth: 2,
     });
-
-    // Datos iniciales
-    const initialData = [
-        @foreach($readings->take(100) as $reading)
-        { time: '{{ $reading->reading_time->toDateTimeString() }}', value: {{ $reading->value }} },
-        @endforeach
-    ];
     
     lineSeries.setData(initialData);
+    chart.timeScale().fitContent();
 
-    // Escuchar nuevos datos en tiempo real para este sensor
-    const channel = pusher.subscribe('sensor-readings');
-    channel.bind('App\\Events\\NewSensorReading', function(data) {
-        if(data.sensor_id == {{ $sensor->id }}) {
+    // Configurar Pusher para actualizaciones en tiempo real
+    const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
+        cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
+        encrypted: true
+    });
+
+    // Suscribirse al canal específico del sensor
+    const channel = pusher.subscribe('sensor.{{ $sensor->id }}');
+    
+    // Escuchar nuevos datos
+    channel.bind('new-reading', function(data) {
+    // Solo actualiza si es el sensor correcto
+        if (data.sensor_id == {{ $sensor->id }}) {
             lineSeries.update({
                 time: data.reading_time,
-                value: data.value
+                value: parseFloat(data.value)
             });
+            updateLastReadingTable(data);
         }
     });
+
+    function updateLastReadingTable(data) {
+        const tableBody = document.querySelector('#readingsTable tbody');
+        const newRow = document.createElement('tr');
+        
+        newRow.innerHTML = `
+            <td>${data.value} {{ $sensor->sensorType->unit }}</td>
+            <td>${new Date(data.reading_time).toLocaleString('es-ES')}</td>
+        `;
+        
+        // Insertar la nueva fila al principio de la tabla
+        if(tableBody.firstChild) {
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+        } else {
+            tableBody.appendChild(newRow);
+        }
+        
+        // Limitar el número de filas para evitar sobrecargar la tabla
+        if(tableBody.children.length > 10) {
+            tableBody.removeChild(tableBody.lastChild);
+        }
+    }
 </script>
 @endpush
 @endsection

@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\DeviceApiController;
 use App\Http\Controllers\API\SensorApiController;
+use App\Http\Controllers\API\SensorDataController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
