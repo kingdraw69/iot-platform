@@ -1,5 +1,16 @@
 import 'bootstrap';
+import { createChart } from 'lightweight-charts';
+const lineSeriesDef = {
+  color: '#2196F3',
+  lineWidth: 2,
+};
 
+const chart = createChart(document.getElementById('sensorChart'), {
+  width: 600,
+  height: 300,
+});
+
+const lineSeries = chart.addLineSeries(lineSeriesDef);
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests
  * to our Laravel back-end. This library automatically handles sending the

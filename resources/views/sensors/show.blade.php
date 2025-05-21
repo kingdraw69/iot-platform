@@ -27,7 +27,7 @@
                 
                 <hr>
                 
-                <div id="sensorChart" style="height: 300px;"></div>
+                <canvas id="sensorChart" style="width: 100%; height: 300px;"></canvas>
             </div>
         </div>
     </div>
@@ -60,94 +60,105 @@
 </div>
 
 @push('scripts')
-<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Datos iniciales para el gráfico
-    const initialData = [
+    // Obtener contexto del canvas
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+
+    // Etiquetas (tiempo) y valores iniciales desde Blade
+    const labels = [
         @foreach($readings->take(100) as $reading)
-        { 
-            time: '{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d H:i:s') }}', 
-            value: {{ $reading->value }} 
-        },
+            "{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d H:i:s') }}",
         @endforeach
     ];
 
-    // Configuración del gráfico
-    const chart = LightweightCharts.createChart(document.getElementById('sensorChart'), {
-        layout: {
-            backgroundColor: '#ffffff',
-            textColor: '#333',
+    const dataValues = [
+        @foreach($readings->take(100) as $reading)
+            {{ floatval($reading->value) }},
+        @endforeach
+    ];
+
+    // Crear gráfico de líneas con Chart.js
+    const sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Lectura del sensor',
+                data: dataValues,
+                borderColor: '#2196F3',
+                backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 0,
+            }]
         },
-        grid: {
-            vertLines: {
-                color: '#f0f0f0',
+        options: {
+            responsive: true,
+            animation: {
+                duration: 500,
             },
-            horzLines: {
-                color: '#f0f0f0',
-            },
-        },
-        timeScale: {
-            borderColor: '#ccc',
-            timeVisible: true,
-            secondsVisible: false,
-        },
-        rightPriceScale: {
-            borderColor: '#ccc',
-        },
-    });
-
-    const lineSeries = chart.addLineSeries({
-        color: '#2962FF',
-        lineWidth: 2,
-    });
-    
-    lineSeries.setData(initialData);
-    chart.timeScale().fitContent();
-
-    // Configurar Pusher para actualizaciones en tiempo real
-    const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
-        cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
-        encrypted: true
-    });
-
-    // Suscribirse al canal específico del sensor
-    const channel = pusher.subscribe('sensor.{{ $sensor->id }}');
-    
-    // Escuchar nuevos datos
-    channel.bind('new-reading', function(data) {
-    // Solo actualiza si es el sensor correcto
-        if (data.sensor_id == {{ $sensor->id }}) {
-            lineSeries.update({
-                time: data.reading_time,
-                value: parseFloat(data.value)
-            });
-            updateLastReadingTable(data);
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Tiempo'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Valor'
+                    }
+                }
+            }
         }
     });
 
-    function updateLastReadingTable(data) {
-        const tableBody = document.querySelector('#readingsTable tbody');
-        const newRow = document.createElement('tr');
-        
-        newRow.innerHTML = `
-            <td>${data.value} {{ $sensor->sensorType->unit }}</td>
-            <td>${new Date(data.reading_time).toLocaleString('es-ES')}</td>
-        `;
-        
-        // Insertar la nueva fila al principio de la tabla
-        if(tableBody.firstChild) {
-            tableBody.insertBefore(newRow, tableBody.firstChild);
-        } else {
-            tableBody.appendChild(newRow);
+    // Función para agregar nuevo dato al gráfico
+    function agregarNuevoDato(tiempo, valor) {
+        sensorChart.data.labels.push(tiempo);
+        sensorChart.data.datasets[0].data.push(valor);
+
+        // Limitar a 100 datos
+        if (sensorChart.data.labels.length > 100) {
+            sensorChart.data.labels.shift();
+            sensorChart.data.datasets[0].data.shift();
         }
-        
-        // Limitar el número de filas para evitar sobrecargar la tabla
-        if(tableBody.children.length > 10) {
-            tableBody.removeChild(tableBody.lastChild);
-        }
+
+        sensorChart.update();
     }
+
+    // Elimina la simulación local:
+    // setInterval(() => { ... }, 3000);
+
+    // ID del sensor (puedes pasarlo desde Blade)
+    const sensorId = {{ $sensor->id }};
+
+    // Última fecha conocida (para evitar duplicados)
+    let ultimaFecha = labels.length > 0 ? labels[labels.length - 1] : null;
+
+    // Función para consultar la API periódicamente
+    setInterval(() => {
+        fetch(`/api/sensors/${sensorId}/readings?limit=1`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.readings && data.readings.data && data.readings.data.length > 0) {
+                    const lectura = data.readings.data[0];
+                    const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
+                    const valor = parseFloat(lectura.value);
+
+                    // Solo agregar si es una lectura nueva
+                    if (tiempo !== ultimaFecha) {
+                        agregarNuevoDato(tiempo, valor);
+                        ultimaFecha = tiempo;
+                    }
+                }
+            });
+    }, 3000);
 </script>
 @endpush
 @endsection

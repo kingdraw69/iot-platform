@@ -10,6 +10,7 @@ use App\Events\NewSensorReading;
 
 class SensorApiController extends Controller
 {
+
     public function store(Request $request, Sensor $sensor)
     {
         // Validación de los datos
@@ -68,4 +69,44 @@ class SensorApiController extends Controller
             ], 500);
         }
     }
+    public function allReadings()
+    {
+        try {
+            // Cargar todos los sensores con sus lecturas más recientes (limitar a 100 por sensor)
+            $sensors = Sensor::with(['sensorType', 'device.classroom', 'readings' => function ($query) {
+                $query->orderBy('reading_time', 'desc')->limit(100);
+            }])->get();
+
+            return response()->json([
+                'sensors' => $sensors->map(function ($sensor) {
+                    return [
+                        'id' => $sensor->id,
+                        'name' => $sensor->name,
+                        'unit' => $sensor->sensorType->unit,
+                        'color' => $this->getColorForSensor($sensor->id),
+                        'readings' => $sensor->readings->map(function ($reading) {
+                            return [
+                                'value' => floatval($reading->value),
+                                'time' => $reading->reading_time->format('Y-m-d H:i:s')
+                            ];
+                        })->reverse() // Para orden cronológico
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetching all sensor readings: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Error retrieving sensor data',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function getColorForSensor($id)
+    {
+        $colors = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#f44336', '#00BCD4', '#8BC34A'];
+        return $colors[$id % count($colors)];
+    }
+
 }

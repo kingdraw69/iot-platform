@@ -32,11 +32,15 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header">
-                <h5>Últimas Lecturas de Sensores</h5>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Monitor de Sensores en Tiempo Real</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="realTimeToggle" checked>
+                    <label class="form-check-label" for="realTimeToggle">Tiempo real</label>
+                </div>
             </div>
             <div class="card-body">
-                <div id="realTimeChart" style="height: 300px;"></div>
+                <canvas id="sensorsChart" height="300"></canvas>
             </div>
         </div>
     </div>
@@ -66,63 +70,181 @@
 </div>
 
 @push('scripts')
-<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0"></script>
 <script>
-    // Configuración del gráfico en tiempo real
-    const chart = LightweightCharts.createChart(document.getElementById('realTimeChart'), {
-        layout: {
-            backgroundColor: '#ffffff',
-            textColor: '#333',
+    // Configuración inicial del gráfico
+    const ctx = document.getElementById('sensorsChart').getContext('2d');
+    let sensorsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [] // Se llenará dinámicamente
         },
-        grid: {
-            vertLines: {
-                color: '#f0f0f0',
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
             },
-            horzLines: {
-                color: '#f0f0f0',
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'minute',
+                        displayFormats: {
+                            minute: 'HH:mm'
+                        },
+                        tooltipFormat: 'DD/MM HH:mm'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tiempo'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Valor'
+                    }
+                }
             },
-        },
-        timeScale: {
-            borderColor: '#ccc',
-            timeVisible: true,
-            secondsVisible: false,
-        },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed.y.toFixed(2);
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
     });
 
-    const lineSeries = chart.addLineSeries({
-        color: '#2962FF',
-        lineWidth: 2,
-    });
+    // Variables de estado
+    let isRealTimeActive = true;
+    let lastUpdateTimes = {};
 
-    // Datos iniciales
-    const initialData = [
-        @foreach($latestReadings as $reading)
-        { 
-            time: '{{ \Carbon\Carbon::parse($reading->reading_time)->toDateTimeString() }}', 
-            value: {{ $reading->value }} 
-        },
-        @endforeach
-    ];
-    
-    lineSeries.setData(initialData);
-    chart.timeScale().fitContent();
+    // Función para cargar datos iniciales
+    async function loadInitialData() {
+        try {
+            const response = await fetch('/api/sensors/all/readings');
+            const data = await response.json();
+            
+            updateChartWithData(data.sensors);
+            
+            // Inicializar lastUpdateTimes
+            data.sensors.forEach(sensor => {
+                if (sensor.readings.length > 0) {
+                    lastUpdateTimes[sensor.id] = sensor.readings[sensor.readings.length - 1].time;
+                }
+            });
+        } catch (error) {
+            console.error('Error loading initial data:', error);
+        }
+    }
 
-    // Configurar Pusher para actualizaciones en tiempo real
-    const pusher = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', {
-        cluster: '{{ config('broadcasting.connections.pusher.options.cluster') }}',
-        encrypted: true
-    });
-
-    // Escuchar nuevos datos en tiempo real
-    const channel = pusher.subscribe('sensor-readings');
-    channel.bind('App\\Events\\NewSensorReading', function(data) {
-        lineSeries.update({
-            time: data.reading_time,
-            value: parseFloat(data.value)
+    // Función para actualizar el gráfico con nuevos datos
+    function updateChartWithData(sensors) {
+        sensors.forEach(sensor => {
+            const existingDatasetIndex = sensorsChart.data.datasets.findIndex(ds => ds.sensorId === sensor.id);
+            
+            const dataPoints = sensor.readings.map(reading => ({
+                x: reading.time,
+                y: reading.value
+            }));
+            
+            if (existingDatasetIndex >= 0) {
+                // Actualizar dataset existente
+                sensorsChart.data.datasets[existingDatasetIndex].data = dataPoints;
+            } else {
+                // Crear nuevo dataset
+                sensorsChart.data.datasets.push({
+                    sensorId: sensor.id,
+                    label: `${sensor.name} (${sensor.unit})`,
+                    data: dataPoints,
+                    borderColor: sensor.color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    fill: false
+                });
+            }
         });
+        
+        sensorsChart.update();
+    }
+
+    // Función para actualizar datos en tiempo real
+    async function updateRealTimeData() {
+        if (!isRealTimeActive) return;
+        
+        try {
+            const response = await fetch('/api/sensors/all/readings?limit=1');
+            const data = await response.json();
+            
+            data.sensors.forEach(sensor => {
+                if (sensor.readings.length > 0) {
+                    const latestReading = sensor.readings[0];
+                    
+                    // Verificar si es una lectura nueva
+                    if (!lastUpdateTimes[sensor.id] || latestReading.time > lastUpdateTimes[sensor.id]) {
+                        lastUpdateTimes[sensor.id] = latestReading.time;
+                        
+                        const existingDatasetIndex = sensorsChart.data.datasets.findIndex(
+                            ds => ds.sensorId === sensor.id
+                        );
+                        
+                        if (existingDatasetIndex >= 0) {
+                            // Agregar nuevo punto
+                            sensorsChart.data.datasets[existingDatasetIndex].data.push({
+                                x: latestReading.time,
+                                y: latestReading.value
+                            });
+                            
+                            // Limitar a 100 puntos por sensor
+                            if (sensorsChart.data.datasets[existingDatasetIndex].data.length > 100) {
+                                sensorsChart.data.datasets[existingDatasetIndex].data.shift();
+                            }
+                        }
+                    }
+                }
+            });
+            
+            sensorsChart.update();
+        } catch (error) {
+            console.error('Error updating real-time data:', error);
+        }
+    }
+
+    // Event listeners
+    document.getElementById('realTimeToggle').addEventListener('change', function() {
+        isRealTimeActive = this.checked;
     });
+
+    // Inicialización
+    loadInitialData();
+    
+    // Actualización periódica
+    setInterval(updateRealTimeData, 3000);
+    
+    // También actualizar cada minuto por si acaso
+    setInterval(loadInitialData, 60000);
 </script>
 @endpush
 @endsection
