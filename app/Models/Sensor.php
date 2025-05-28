@@ -8,16 +8,16 @@ class Sensor extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'device_id', 'sensor_type_id', 'status'];
-    
-    protected $casts = [
-        'status' => 'boolean'
+    protected $fillable = [
+        'name',
+        'device_id',
+        'sensor_type_id',
     ];
 
     // Relación con el dispositivo
     public function device()
     {
-        return $this->belongsTo(Device::class)->with('classroom');
+        return $this->belongsTo(Device::class);
     }
 
     // Relación con el tipo de sensor
@@ -29,6 +29,6 @@ class Sensor extends Model
     // Relación con las lecturas
     public function readings()
     {
-        return $this->hasMany(SensorReading::class)->orderBy('reading_time', 'desc');
+        return $this->hasMany(SensorReading::class);
     }
 }

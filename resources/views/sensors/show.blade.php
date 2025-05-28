@@ -37,6 +37,11 @@
                 <h5>Últimas Lecturas</h5>
             </div>
             <div class="card-body">
+                <div class="form-group">
+                    <label for="filterDate">Filtrar por Fecha:</label>
+                    <input type="datetime-local" id="filterDate" name="filterDate" class="form-control">
+                    <button id="filterButton" class="btn btn-primary mt-2">Filtrar</button>
+                </div>
                 <table class="table table-sm" id="readingsTable">
                     <thead>
                         <tr>
@@ -48,12 +53,15 @@
                         @foreach($readings as $reading)
                         <tr>
                             <td>{{ $reading->value }} {{ $sensor->sensorType->unit }}</td>
-                            <td>{{ \Carbon\Carbon::parse($reading->reading_time)->format('d/m/Y H:i') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($reading->reading_time)->format('d/m/Y ') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
-                {{ $readings->links() }}
+                <div class="d-flex justify-content-center mt-3">
+                    {{ $readings->links() }}
+                </div>
+
             </div>
         </div>
     </div>
@@ -69,7 +77,7 @@
     // Etiquetas (tiempo) y valores iniciales desde Blade
     const labels = [
         @foreach($readings->take(100) as $reading)
-            "{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d H:i:s') }}",
+            "{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d ') }}",
         @endforeach
     ];
 
@@ -159,6 +167,69 @@
                 }
             });
     }, 3000);
+
+    const filterButton = document.getElementById('filterButton');
+    // Ajustar el código de filtrado para asegurar que los datos se actualicen correctamente
+    filterButton.addEventListener('click', () => {
+    let rawDate = document.getElementById('filterDate').value;
+    if (!rawDate) {
+        alert('Selecciona una fecha válida.');
+        return;
+    }
+
+    const dateOnly = rawDate.split('T')[0]; // Extraer solo la parte de la fecha
+
+    fetch(`/api/sensors/${sensorId}/readings?date=${dateOnly}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error en la API: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            const tbody = document.querySelector('#readingsTable tbody');
+            tbody.innerHTML = '';
+
+            if (data.readings && data.readings.data && data.readings.data.length > 0) {
+                const filteredLabels = [];
+                const filteredValues = [];
+
+                data.readings.data.forEach(reading => {
+                    const date = new Date(reading.reading_time);
+                    const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
+
+                    filteredLabels.push(formattedDate);
+                    filteredValues.push(parseFloat(reading.value));
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${reading.value} ${sensor.sensorType.unit}</td>
+                        <td>${formattedDate}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Actualizar gráfico
+                sensorChart.data.labels = filteredLabels;
+                sensorChart.data.datasets[0].data = filteredValues;
+                sensorChart.update();
+
+                // Ocultar paginación cuando se filtra
+                document.querySelector('.d-flex.justify-content-center.mt-3')?.classList.add('d-none');
+            } else {
+                alert('No se encontraron lecturas para la fecha seleccionada.');
+                sensorChart.data.labels = [];
+                sensorChart.data.datasets[0].data = [];
+                sensorChart.update();
+                document.querySelector('.d-flex.justify-content-center.mt-3')?.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Error al filtrar lecturas:', error);
+            alert('Error al filtrar lecturas: ' + error.message);
+        });
+    });
+
 </script>
 @endpush
 @endsection

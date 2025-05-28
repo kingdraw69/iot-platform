@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('unit'); // °C, %, ppm, etc.
             $table->float('min_range');
             $table->float('max_range');
-            $table->timestamps();
+            $table->timestamps();   
         });
     }
 

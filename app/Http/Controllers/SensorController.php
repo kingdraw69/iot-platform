@@ -99,17 +99,19 @@ class SensorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'device_id' => 'required|exists:devices,id',
-            'sensor_type_id' => 'required|exists:sensor_types,id',
-            'status' => 'boolean',
+            'min_range' => 'required|numeric',
+            'max_range' => 'required|numeric',
         ]);
 
         try {
-            $sensor->update($validated);
-            
+            $sensor->name = $validated['name'];
+            $sensor->sensorType->min_range = $validated['min_range'];
+            $sensor->sensorType->max_range = $validated['max_range'];
+            $sensor->sensorType->save();
+            $sensor->save();
+
             return redirect()->route('sensors.index')
                 ->with('success', 'Sensor actualizado exitosamente');
-                
         } catch (\Exception $e) {
             Log::error('Error al actualizar sensor: ' . $e->getMessage());
             return back()->withInput()
@@ -127,5 +129,15 @@ class SensorController extends Controller
             Log::error('Error al eliminar sensor: ' . $e->getMessage());
             return back()->with('error', 'Error al eliminar el sensor. Por favor intente nuevamente.');
         }
+    }
+
+    public function getLatestReadings(Request $request)
+    {
+        $limit = $request->query('limit', 1); // Obtener el límite de lecturas
+        $sensors = Sensor::with(['readings' => function ($query) use ($limit) {
+            $query->orderBy('reading_time', 'desc')->limit($limit);
+        }])->get();
+
+        return response()->json(['sensors' => $sensors]);
     }
 }

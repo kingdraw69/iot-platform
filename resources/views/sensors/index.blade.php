@@ -19,6 +19,7 @@
                         <th>Aula</th>
                         <th>Estado</th>
                         <th>Última Lectura</th>
+                        <th>Fecha y Hora</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -37,6 +38,13 @@
                         <td>
                             @if($sensor->readings->count() > 0)
                                 {{ $sensor->readings->first()->value }} {{ $sensor->sensorType->unit }}
+                            @else
+                                Sin datos
+                            @endif
+                        </td>
+                        <td>
+                            @if($sensor->readings->count() > 0)
+                                {{ $sensor->readings->first()->reading_time->format('d/m/Y H:i') }}
                             @else
                                 Sin datos
                             @endif

@@ -1,70 +1,21 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Listado de Alertas</h5>
-        <div>
-            <a href="{{ route('alerts.unresolved') }}" class="btn btn-warning">
-                <i class="fas fa-exclamation-triangle"></i> Ver no resueltas
+<div class="container">
+    <h1>Alertas Activas</h1>
+    <div class="list-group">
+        @foreach($alerts as $alert)
+            <a href="#" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
+                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
+                </div>
+                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
+                <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
+                <small>Aula: {{ $alert->sensorReading->sensor->device->classroom->name }}</small>
             </a>
-        </div>
+        @endforeach
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Mensaje</th>
-                        <th>Sensor</th>
-                        <th>Valor</th>
-                        <th>Gravedad</th>
-                        <th>Fecha</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($alerts as $alert)
-                    <tr>
-                        <td>{{ $alert->id }}</td>
-                        <td>{{ $alert->alertRule->message }}</td>
-                        <td>{{ $alert->sensorReading->sensor->name }}</td>
-                        <td>
-                            {{ $alert->sensorReading->value }} 
-                            {{ $alert->sensorReading->sensor->sensorType->unit }}
-                        </td>
-                        <td>
-                            <span class="badge badge-{{ 
-                                $alert->alertRule->severity == 'danger' ? 'danger' : 
-                                ($alert->alertRule->severity == 'warning' ? 'warning' : 'info') 
-                            }}">
-                                {{ ucfirst($alert->alertRule->severity) }}
-                            </span>
-                        </td>
-                        <td>{{ $alert->created_at->format('d/m/Y H:i') }}</td>
-                        <td>
-                            <span class="badge badge-{{ $alert->resolved ? 'success' : 'danger' }}">
-                                {{ $alert->resolved ? 'Resuelta' : 'Pendiente' }}
-                            </span>
-                        </td>
-                        <td>
-                            @if(!$alert->resolved)
-                            <form action="{{ route('alerts.resolve', $alert) }}" method="POST" class="d-inline">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-success" title="Marcar como resuelta">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </form>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            {{ $alerts->links() }}
-        </div>
-    </div>
+    {{ $alerts->links() }}
 </div>
 @endsection

@@ -12,7 +12,7 @@ class AlertController extends Controller
         $alerts = Alert::with(['sensorReading.sensor.device.classroom', 'alertRule'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
-            
+
         return view('alerts.index', compact('alerts'));
     }
 

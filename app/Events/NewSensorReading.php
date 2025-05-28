@@ -40,4 +40,9 @@ class NewSensorReading implements ShouldBroadcast
             'classroom_name' => $this->reading->sensor->device->classroom->name,
         ];
     }
+
+    public function handle()
+    {
+        $this->reading->checkForAlert();
+    }
 }
