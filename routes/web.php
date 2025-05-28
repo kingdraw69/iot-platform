@@ -33,3 +33,17 @@ Route::get('sensors/{sensor}/edit', [SensorController::class, 'edit'])->name('se
 Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
 Route::get('alerts/unresolved', [AlertController::class, 'unresolved'])->name('alerts.unresolved');
 Route::post('alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
+
+
+Route::get('sensors/{sensor}/download', [SensorController::class, 'downloadReadings'])
+    ->name('sensors.download'); 
+
+Route::get('sensors/{sensor}/readings/filter', [SensorController::class, 'getReadingsByDateRange'])
+    ->name('sensors.readings.filter');
+
+
+use App\Http\Controllers\AlertRuleController;
+
+Route::get('alert-rules/create', [AlertRuleController::class, 'create'])->name('alert-rules.create');
+Route::post('alert-rules', [AlertRuleController::class, 'store'])->name('alert-rules.store');
+Route::delete('alert-rules/{alertRule}', [AlertRuleController::class, 'destroy'])->name('alert-rules.destroy');

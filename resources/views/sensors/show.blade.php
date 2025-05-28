@@ -6,6 +6,9 @@
         <div class="card">
             <div class="card-header">
                 <h5>Detalles del Sensor: {{ $sensor->name }}</h5>
+                <a href="{{ route('sensors.download', $sensor) }}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Descargar Histórico JSON
+                </a>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -36,12 +39,18 @@
             <div class="card-header">
                 <h5>Últimas Lecturas</h5>
             </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label for="filterDate">Filtrar por Fecha:</label>
-                    <input type="datetime-local" id="filterDate" name="filterDate" class="form-control">
-                    <button id="filterButton" class="btn btn-primary mt-2">Filtrar</button>
+            <div class="form-group">
+                <label>Filtrar por Rango de Fechas:</label>
+                <div class="input-group mb-2">
+                    <input type="date" id="startDate" class="form-control" placeholder="Fecha inicial">
                 </div>
+                <div class="input-group mb-2">
+                    <input type="date" id="endDate" class="form-control" placeholder="Fecha final">
+                </div>
+                <button id="filterButton" class="btn btn-primary">Filtrar</button>
+                <button id="resetFilter" class="btn btn-secondary ml-2">Resetear</button>
+            </div>
+
                 <table class="table table-sm" id="readingsTable">
                     <thead>
                         <tr>
@@ -169,65 +178,93 @@
     }, 3000);
 
     const filterButton = document.getElementById('filterButton');
-    // Ajustar el código de filtrado para asegurar que los datos se actualicen correctamente
-    filterButton.addEventListener('click', () => {
-    let rawDate = document.getElementById('filterDate').value;
-    if (!rawDate) {
-        alert('Selecciona una fecha válida.');
-        return;
+    const resetFilter = document.getElementById('resetFilter');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+
+    filterButton.addEventListener('click', function() {
+        if (!startDate.value || !endDate.value) {
+            alert('Por favor seleccione ambas fechas');
+            return;
+        }
+
+        if (new Date(startDate.value) > new Date(endDate.value)) {
+            alert('La fecha inicial no puede ser mayor que la fecha final');
+            return;
+        }
+
+        fetch(`/sensors/${sensorId}/readings/filter?startDate=${startDate.value}&endDate=${endDate.value}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateTableAndChart(data);
+                } else {
+                    alert('Error al filtrar los datos');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al obtener los datos filtrados');
+            });
+    });
+
+    resetFilter.addEventListener('click', function() {
+        startDate.value = '';
+        endDate.value = '';
+        location.reload(); // Recarga la página para mostrar todos los datos
+    });
+
+    function updateTableAndChart(data) {
+        // Actualizar tabla
+        const tbody = document.querySelector('#readingsTable tbody');
+        tbody.innerHTML = '';
+        
+        const labels = [];
+        const values = [];
+
+        data.readings.forEach(reading => {
+            const date = new Date(reading.reading_time);
+            const formattedDate = date.toLocaleDateString();
+            
+            // Agregar fila a la tabla
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${reading.value} ${data.sensor.unit}</td>
+                <td>${formattedDate}</td>
+            `;
+            tbody.appendChild(row);
+
+            // Preparar datos para el gráfico
+            labels.push(formattedDate);
+            values.push(parseFloat(reading.value));
+        });
+
+        // Actualizar gráfico
+        sensorChart.data.labels = labels;
+        sensorChart.data.datasets[0].data = values;
+        sensorChart.update();
+
+        // Ocultar paginación
+        const paginationDiv = document.querySelector('.d-flex.justify-content-center.mt-3');
+        if (paginationDiv) {
+            paginationDiv.style.display = 'none';
+        }
     }
 
-    const dateOnly = rawDate.split('T')[0]; // Extraer solo la parte de la fecha
-
-    fetch(`/api/sensors/${sensorId}/readings?date=${dateOnly}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error en la API: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            const tbody = document.querySelector('#readingsTable tbody');
-            tbody.innerHTML = '';
-
-            if (data.readings && data.readings.data && data.readings.data.length > 0) {
-                const filteredLabels = [];
-                const filteredValues = [];
-
-                data.readings.data.forEach(reading => {
-                    const date = new Date(reading.reading_time);
-                    const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth()+1).padStart(2, '0')}/${date.getFullYear()}`;
-
-                    filteredLabels.push(formattedDate);
-                    filteredValues.push(parseFloat(reading.value));
-
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${reading.value} ${sensor.sensorType.unit}</td>
-                        <td>${formattedDate}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-
-                // Actualizar gráfico
-                sensorChart.data.labels = filteredLabels;
-                sensorChart.data.datasets[0].data = filteredValues;
-                sensorChart.update();
-
-                // Ocultar paginación cuando se filtra
-                document.querySelector('.d-flex.justify-content-center.mt-3')?.classList.add('d-none');
-            } else {
-                alert('No se encontraron lecturas para la fecha seleccionada.');
-                sensorChart.data.labels = [];
-                sensorChart.data.datasets[0].data = [];
-                sensorChart.update();
-                document.querySelector('.d-flex.justify-content-center.mt-3')?.classList.add('d-none');
-            }
-        })
-        .catch(error => {
-            console.error('Error al filtrar lecturas:', error);
-            alert('Error al filtrar lecturas: ' + error.message);
-        });
+    // Agregar manejador para el botón de descarga
+    document.querySelector('a[href*="sensors/download"]').addEventListener('click', function(e) {
+        // Deshabilitar el botón temporalmente
+        this.classList.add('disabled');
+        
+        // Agregar spinner
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Descargando...';
+        
+        // Restaurar el botón después de 3 segundos
+        setTimeout(() => {
+            this.classList.remove('disabled');
+            this.innerHTML = originalContent;
+        }, 3000);
     });
 
 </script>

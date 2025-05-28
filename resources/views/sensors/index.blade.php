@@ -42,13 +42,7 @@
                                 Sin datos
                             @endif
                         </td>
-                        <td>
-                            @if($sensor->readings->count() > 0)
-                                {{ $sensor->readings->first()->reading_time->format('d/m/Y H:i') }}
-                            @else
-                                Sin datos
-                            @endif
-                        </td>
+                        
                         <td>
                             <a href="{{ route('sensors.show', $sensor) }}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i>
