@@ -19,6 +19,7 @@
                         <th>Aula</th>
                         <th>Estado</th>
                         <th>Última Lectura</th>
+                        <th>Fecha y Hora</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -41,6 +42,7 @@
                                 Sin datos
                             @endif
                         </td>
+                        
                         <td>
                             <a href="{{ route('sensors.show', $sensor) }}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i>

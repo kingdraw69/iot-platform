@@ -10,6 +10,7 @@
                 <h5 class="mb-0">
                     <i class="fas fa-info-circle me-2"></i> Detalles del Dispositivo
                 </h5>
+                
                 <a href="{{ route('devices.edit', $device) }}" class="btn btn-warning btn-sm">
                     <i class="fas fa-edit me-1"></i> Editar
                 </a>

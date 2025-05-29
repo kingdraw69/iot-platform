@@ -108,5 +108,39 @@ class SensorApiController extends Controller
         $colors = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#f44336', '#00BCD4', '#8BC34A'];
         return $colors[$id % count($colors)];
     }
+    public function index()
+    {
+        try {
+            // Cargar sensores con sus relaciones
+            $sensors = Sensor::with(['sensorType', 'device.classroom'])->get();
 
+            if ($sensors->isEmpty()) {
+                Log::warning('No se encontraron sensores en la base de datos.');
+            }
+
+            return response()->json(
+                $sensors->map(function ($sensor) {
+                    return [
+                        'id' => $sensor->id,
+                        'name' => $sensor->name,
+                        'device_id' => $sensor->device_id ?? null,
+                        'unit' => $sensor->sensorType->unit ?? '',
+                        'sensor_type' => [
+                            'name' => $sensor->sensorType->name ?? '',
+                            'unit' => $sensor->sensorType->unit ?? '',
+                            'min_range' => $sensor->sensorType->min_range ?? null,
+                            'max_range' => $sensor->sensorType->max_range ?? null,
+                        ]
+                    ];
+                })->values()
+            );
+        } catch (\Exception $e) {
+            Log::error("Error fetching sensors: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Error retrieving sensors',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

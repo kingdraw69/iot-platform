@@ -34,9 +34,25 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5>Monitor de Sensores en Tiempo Real</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="realTimeToggle" checked>
-                    <label class="form-check-label" for="realTimeToggle">Tiempo real</label>
+                <div class="d-flex align-items-center">
+                    <!-- Toggle de Tiempo Real -->
+                    <div class="form-check form-switch me-3">
+                        <input class="form-check-input" type="checkbox" id="realTimeToggle" checked>
+                        <label class="form-check-label" for="realTimeToggle">Tiempo Real</label>
+                    </div>
+
+                    <!-- Selección de dispositivo -->
+                    <select id="deviceSelect" class="form-select me-2">
+                        <option value="" disabled selected>Seleccione un dispositivo</option>
+                        @foreach($devices as $device)
+                            <option value="{{ $device->id }}">{{ $device->name }}</option>
+                        @endforeach
+                    </select>
+
+                    <!-- Selección de sensor -->
+                    <select id="sensorSelect" class="form-select">
+                        <option value="" disabled selected>Seleccione un sensor</option>
+                    </select>
                 </div>
             </div>
             <div class="card-body">
@@ -52,16 +68,16 @@
             <div class="card-body">
                 <div class="list-group">
                     @foreach($latestReadings as $reading)
-                        @if($reading->alerts->count() > 0)
+                        @foreach($reading->alerts as $alert)
                             <a href="#" class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ $reading->sensor->name }}</h6>
-                                    <small>{{ \Carbon\Carbon::parse($reading->reading_time)->diffForHumans() }}</small>
+                                    <h6 class="mb-1">Sensor: {{ $reading->sensor->name }}</h6>
+                                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
                                 </div>
-                                <p class="mb-1">Valor: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</p>
-                                <small>Aula: {{ $reading->sensor->device->classroom->name }}</small>
+                                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
+                                <small>Valor detectado: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</small>
                             </a>
-                        @endif
+                        @endforeach
                     @endforeach
                 </div>
             </div>
@@ -70,181 +86,180 @@
 </div>
 
 @push('scripts')
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0"></script>
 <script>
-    // Configuración inicial del gráfico
+    // Configuración del gráfico
+
     const ctx = document.getElementById('sensorsChart').getContext('2d');
     let sensorsChart = new Chart(ctx, {
         type: 'line',
         data: {
-            datasets: [] // Se llenará dinámicamente
+            labels: [], // Etiquetas vacías inicialmente
+            datasets: [{
+                label: 'Lectura del sensor',
+                data: [],
+                borderColor: '#2196F3',
+                backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 0,
+            }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
+            animation: {
+                duration: 500,
             },
             scales: {
                 x: {
-                    type: 'time',
-                    time: {
-                        unit: 'minute',
-                        displayFormats: {
-                            minute: 'HH:mm'
-                        },
-                        tooltipFormat: 'DD/MM HH:mm'
-                    },
+                    display: true,
                     title: {
                         display: true,
                         text: 'Tiempo'
                     }
                 },
                 y: {
+                    display: true,
                     title: {
                         display: true,
                         text: 'Valor'
                     }
                 }
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        boxWidth: 12,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed.y.toFixed(2);
-                            return label;
-                        }
-                    }
-                }
             }
         }
     });
 
-    // Variables de estado
-    let isRealTimeActive = true;
-    let lastUpdateTimes = {};
+    document.addEventListener('DOMContentLoaded', function () {
+        const deviceSelect = document.getElementById('deviceSelect');
+        const sensorSelect = document.getElementById('sensorSelect');
+        const realTimeToggle = document.getElementById('realTimeToggle');
 
-    // Función para cargar datos iniciales
-    async function loadInitialData() {
-        try {
-            const response = await fetch('/api/sensors/all/readings');
-            const data = await response.json();
-            
-            updateChartWithData(data.sensors);
-            
-            // Inicializar lastUpdateTimes
-            data.sensors.forEach(sensor => {
-                if (sensor.readings.length > 0) {
-                    lastUpdateTimes[sensor.id] = sensor.readings[sensor.readings.length - 1].time;
-                }
-            });
-        } catch (error) {
-            console.error('Error loading initial data:', error);
+        let refreshInterval = null;
+
+        // Función para reiniciar la gráfica
+        function resetChart() {
+            sensorsChart.data.labels = [];
+            sensorsChart.data.datasets[0].data = [];
+            sensorsChart.update();
         }
-    }
 
-    // Función para actualizar el gráfico con nuevos datos
-    function updateChartWithData(sensors) {
-        sensors.forEach(sensor => {
-            const existingDatasetIndex = sensorsChart.data.datasets.findIndex(ds => ds.sensorId === sensor.id);
-            
-            const dataPoints = sensor.readings.map(reading => ({
-                x: reading.time,
-                y: reading.value
-            }));
-            
-            if (existingDatasetIndex >= 0) {
-                // Actualizar dataset existente
-                sensorsChart.data.datasets[existingDatasetIndex].data = dataPoints;
-            } else {
-                // Crear nuevo dataset
-                sensorsChart.data.datasets.push({
-                    sensorId: sensor.id,
-                    label: `${sensor.name} (${sensor.unit})`,
-                    data: dataPoints,
-                    borderColor: sensor.color,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.1,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    fill: false
-                });
+        // Event listener para el selector de dispositivos
+        deviceSelect.addEventListener('change', async function () {
+            const deviceId = this.value;
+
+            // Limpiar las opciones anteriores del selector de sensores
+            sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
+            resetChart(); // Reiniciar la gráfica
+
+            if (deviceId) {
+                try {
+                    const response = await fetch(`/api/devices/${deviceId}/sensors`);
+                    if (!response.ok) {
+                        throw new Error(`Error en la API: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        data.forEach(sensor => {
+                            const option = document.createElement('option');
+                            option.value = sensor.id;
+                            option.textContent = sensor.name;
+                            sensorSelect.appendChild(option);
+                        });
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = "";
+                        option.textContent = "No hay sensores disponibles";
+                        sensorSelect.appendChild(option);
+                    }
+                } catch (error) {
+                    console.error('Error al cargar sensores:', error);
+                    alert('Error al cargar sensores del dispositivo: ' + error.message);
+                }
             }
         });
-        
-        sensorsChart.update();
-    }
 
-    // Función para actualizar datos en tiempo real
-    async function updateRealTimeData() {
-        if (!isRealTimeActive) return;
-        
-        try {
-            const response = await fetch('/api/sensors/all/readings?limit=1');
-            const data = await response.json();
-            
-            data.sensors.forEach(sensor => {
-                if (sensor.readings.length > 0) {
-                    const latestReading = sensor.readings[0];
-                    
-                    // Verificar si es una lectura nueva
-                    if (!lastUpdateTimes[sensor.id] || latestReading.time > lastUpdateTimes[sensor.id]) {
-                        lastUpdateTimes[sensor.id] = latestReading.time;
-                        
-                        const existingDatasetIndex = sensorsChart.data.datasets.findIndex(
-                            ds => ds.sensorId === sensor.id
-                        );
-                        
-                        if (existingDatasetIndex >= 0) {
-                            // Agregar nuevo punto
-                            sensorsChart.data.datasets[existingDatasetIndex].data.push({
-                                x: latestReading.time,
-                                y: latestReading.value
-                            });
-                            
-                            // Limitar a 100 puntos por sensor
-                            if (sensorsChart.data.datasets[existingDatasetIndex].data.length > 100) {
-                                sensorsChart.data.datasets[existingDatasetIndex].data.shift();
-                            }
+        // Event listener para el selector de sensores
+        sensorSelect.addEventListener('change', function () {
+            const sensorId = this.value;
+
+            if (refreshInterval) clearInterval(refreshInterval); // Detener actualizaciones en tiempo real
+            resetChart(); // Reiniciar la gráfica
+
+            if (sensorId) {
+                if (realTimeToggle.checked) {
+                    startLiveUpdates(sensorId);
+                } else {
+                    loadSensorReadings(sensorId);
+                }
+            }
+        });
+
+        // Función para cargar lecturas históricas
+        async function loadSensorReadings(sensorId) {
+            try {
+                const response = await fetch(`/api/sensors/${sensorId}/readings`);
+                if (!response.ok) {
+                    throw new Error(`Error en la API: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                const labels = data.map(reading => reading.reading_time.replace('T', ' ').slice(0, 19));
+                const values = data.map(reading => parseFloat(reading.value));
+
+                sensorsChart.data.labels = labels;
+                sensorsChart.data.datasets[0].data = values;
+                sensorsChart.update();
+            } catch (error) {
+                console.error('Error al cargar lecturas:', error);
+                alert('Error al cargar lecturas: ' + error.message);
+            }
+        }
+
+        // Función para actualizaciones en tiempo real
+        function startLiveUpdates(sensorId) {
+            refreshInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
+                    if (!response.ok) {
+                        throw new Error(`Error en la API: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    const lectura = data[0]; // Ajustar según la estructura de la respuesta
+
+                    if (lectura) {
+                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
+                        const valor = parseFloat(lectura.value);
+
+                        if (!sensorsChart.data.labels.includes(tiempo)) {
+                            agregarNuevoDato(tiempo, valor);
                         }
                     }
+                } catch (error) {
+                    console.error('Error al actualizar lecturas en vivo:', error);
                 }
-            });
-            
-            sensorsChart.update();
-        } catch (error) {
-            console.error('Error updating real-time data:', error);
+            }, 2000);
         }
-    }
 
-    // Event listeners
-    document.getElementById('realTimeToggle').addEventListener('change', function() {
-        isRealTimeActive = this.checked;
+        // Función para agregar nuevo dato al gráfico
+        function agregarNuevoDato(tiempo, valor) {
+            sensorsChart.data.labels.push(tiempo);
+            sensorsChart.data.datasets[0].data.push(valor);
+
+            if (sensorsChart.data.labels.length > 100) {
+                sensorsChart.data.labels.shift();
+                sensorsChart.data.datasets[0].data.shift();
+            }
+
+            sensorsChart.update();
+        }
     });
-
-    // Inicialización
-    loadInitialData();
-    
-    // Actualización periódica
-    setInterval(updateRealTimeData, 3000);
-    
-    // También actualizar cada minuto por si acaso
-    setInterval(loadInitialData, 60000);
 </script>
 @endpush
 @endsection

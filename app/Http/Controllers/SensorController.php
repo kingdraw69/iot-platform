@@ -99,17 +99,19 @@ class SensorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'device_id' => 'required|exists:devices,id',
-            'sensor_type_id' => 'required|exists:sensor_types,id',
-            'status' => 'boolean',
+            'min_range' => 'required|numeric',
+            'max_range' => 'required|numeric',
         ]);
 
         try {
-            $sensor->update($validated);
-            
+            $sensor->name = $validated['name'];
+            $sensor->sensorType->min_range = $validated['min_range'];
+            $sensor->sensorType->max_range = $validated['max_range'];
+            $sensor->sensorType->save();
+            $sensor->save();
+
             return redirect()->route('sensors.index')
                 ->with('success', 'Sensor actualizado exitosamente');
-                
         } catch (\Exception $e) {
             Log::error('Error al actualizar sensor: ' . $e->getMessage());
             return back()->withInput()
@@ -128,4 +130,96 @@ class SensorController extends Controller
             return back()->with('error', 'Error al eliminar el sensor. Por favor intente nuevamente.');
         }
     }
+
+    public function getLatestReadings(Request $request)
+    {
+        $limit = $request->query('limit', 1); // Obtener el límite de lecturas
+        $sensors = Sensor::with(['readings' => function ($query) use ($limit) {
+            $query->orderBy('reading_time', 'desc')->limit($limit);
+        }])->get();
+
+        return response()->json(['sensors' => $sensors]);
+    }
+
+    public function downloadReadings(Sensor $sensor)
+{
+    try {
+        // Obtener todas las lecturas del sensor
+        $readings = $sensor->readings()
+            ->orderBy('reading_time', 'desc')
+            ->get()
+            ->map(function ($reading) {
+                return [
+                    'value' => $reading->value,
+                    'reading_time' => $reading->reading_time,
+                    'created_at' => $reading->created_at
+                ];
+            });
+
+        // Preparar los datos para el JSON
+        $data = [
+            'sensor' => [
+                'name' => $sensor->name,
+                'type' => $sensor->sensorType->name,
+                'unit' => $sensor->sensorType->unit,
+                'device' => $sensor->device->name,
+                'classroom' => $sensor->device->classroom->name
+            ],
+            'readings' => $readings
+        ];
+
+        // Generar el nombre del archivo
+        $fileName = 'sensor_' . $sensor->id . '_readings_' . date('Y-m-d_His') . '.json';
+
+        // Retornar la respuesta como descarga
+        return response()->json($data)
+            ->header('Content-Disposition', 'attachment; filename=' . $fileName)
+            ->header('Content-Type', 'application/json');
+
+    } catch (\Exception $e) {
+        Log::error('Error al descargar lecturas del sensor: ' . $e->getMessage());
+        return back()->with('error', 'Error al descargar los datos del sensor.');
+    }
+}
+
+    public function getSensorReadings(Sensor $sensor)
+    {
+        $readings = $sensor->readings()
+            ->orderBy('reading_time', 'desc')
+            ->paginate(10);
+            
+        return view('sensors.readings', compact('sensor', 'readings'));
+    }
+
+    public function getReadingsByDateRange(Request $request, Sensor $sensor)
+{
+    try {
+        $startDate = $request->input('startDate');
+        $endDate = $request->input('endDate');
+
+        $query = $sensor->readings()
+            ->whereBetween('reading_time', [
+                $startDate . ' 00:00:00',
+                $endDate . ' 23:59:59'
+            ])
+            ->orderBy('reading_time', 'desc');
+
+        $readings = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'readings' => $readings,
+            'sensor' => [
+                'unit' => $sensor->sensorType->unit
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error al filtrar lecturas: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener las lecturas'
+        ], 500);
+    }
+}
 }

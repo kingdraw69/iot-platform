@@ -86,28 +86,16 @@ class DeviceController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'serial_number' => 'required|string|unique:devices,serial_number,'.$device->id,
-            'device_type_id' => 'required|exists:device_types,id',
-            'classroom_id' => 'required|exists:classrooms,id',
             'ip_address' => 'nullable|ip',
             'mac_address' => 'nullable|string|regex:/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/',
-            'status' => 'boolean',
+            'classroom_id' => 'required|exists:classrooms,id',
         ]);
 
         try {
-            // Registrar cambio de estado si es diferente
-            if ($device->status != $validated['status']) {
-                $device->statusLogs()->create([
-                    'status' => $validated['status'],
-                    'changed_at' => now(),
-                ]);
-            }
-            
             $device->update($validated);
-            
+
             return redirect()->route('devices.index')
                 ->with('success', 'Dispositivo actualizado exitosamente');
-                
         } catch (\Exception $e) {
             Log::error('Error al actualizar dispositivo: ' . $e->getMessage());
             return back()->withInput()

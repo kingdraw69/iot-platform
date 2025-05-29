@@ -6,6 +6,9 @@
         <div class="card">
             <div class="card-header">
                 <h5>Detalles del Sensor: {{ $sensor->name }}</h5>
+                <a href="{{ route('sensors.download', $sensor) }}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Descargar Histórico JSON
+                </a>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -36,7 +39,18 @@
             <div class="card-header">
                 <h5>Últimas Lecturas</h5>
             </div>
-            <div class="card-body">
+            <div class="form-group">
+                <label>Filtrar por Rango de Fechas:</label>
+                <div class="input-group mb-2">
+                    <input type="date" id="startDate" class="form-control" placeholder="Fecha inicial">
+                </div>
+                <div class="input-group mb-2">
+                    <input type="date" id="endDate" class="form-control" placeholder="Fecha final">
+                </div>
+                <button id="filterButton" class="btn btn-primary">Filtrar</button>
+                <button id="resetFilter" class="btn btn-secondary ml-2">Resetear</button>
+            </div>
+
                 <table class="table table-sm" id="readingsTable">
                     <thead>
                         <tr>
@@ -48,12 +62,15 @@
                         @foreach($readings as $reading)
                         <tr>
                             <td>{{ $reading->value }} {{ $sensor->sensorType->unit }}</td>
-                            <td>{{ \Carbon\Carbon::parse($reading->reading_time)->format('d/m/Y H:i') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($reading->reading_time)->format('d/m/Y ') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
-                {{ $readings->links() }}
+                <div class="d-flex justify-content-center mt-3">
+                    {{ $readings->links() }}
+                </div>
+
             </div>
         </div>
     </div>
@@ -69,7 +86,7 @@
     // Etiquetas (tiempo) y valores iniciales desde Blade
     const labels = [
         @foreach($readings->take(100) as $reading)
-            "{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d H:i:s') }}",
+            "{{ \Carbon\Carbon::parse($reading->reading_time)->format('Y-m-d ') }}",
         @endforeach
     ];
 
@@ -159,6 +176,97 @@
                 }
             });
     }, 3000);
+
+    const filterButton = document.getElementById('filterButton');
+    const resetFilter = document.getElementById('resetFilter');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+
+    filterButton.addEventListener('click', function() {
+        if (!startDate.value || !endDate.value) {
+            alert('Por favor seleccione ambas fechas');
+            return;
+        }
+
+        if (new Date(startDate.value) > new Date(endDate.value)) {
+            alert('La fecha inicial no puede ser mayor que la fecha final');
+            return;
+        }
+
+        fetch(`/sensors/${sensorId}/readings/filter?startDate=${startDate.value}&endDate=${endDate.value}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateTableAndChart(data);
+                } else {
+                    alert('Error al filtrar los datos');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al obtener los datos filtrados');
+            });
+    });
+
+    resetFilter.addEventListener('click', function() {
+        startDate.value = '';
+        endDate.value = '';
+        location.reload(); // Recarga la página para mostrar todos los datos
+    });
+
+    function updateTableAndChart(data) {
+        // Actualizar tabla
+        const tbody = document.querySelector('#readingsTable tbody');
+        tbody.innerHTML = '';
+        
+        const labels = [];
+        const values = [];
+
+        data.readings.forEach(reading => {
+            const date = new Date(reading.reading_time);
+            const formattedDate = date.toLocaleDateString();
+            
+            // Agregar fila a la tabla
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${reading.value} ${data.sensor.unit}</td>
+                <td>${formattedDate}</td>
+            `;
+            tbody.appendChild(row);
+
+            // Preparar datos para el gráfico
+            labels.push(formattedDate);
+            values.push(parseFloat(reading.value));
+        });
+
+        // Actualizar gráfico
+        sensorChart.data.labels = labels;
+        sensorChart.data.datasets[0].data = values;
+        sensorChart.update();
+
+        // Ocultar paginación
+        const paginationDiv = document.querySelector('.d-flex.justify-content-center.mt-3');
+        if (paginationDiv) {
+            paginationDiv.style.display = 'none';
+        }
+    }
+
+    // Agregar manejador para el botón de descarga
+    document.querySelector('a[href*="sensors/download"]').addEventListener('click', function(e) {
+        // Deshabilitar el botón temporalmente
+        this.classList.add('disabled');
+        
+        // Agregar spinner
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Descargando...';
+        
+        // Restaurar el botón después de 3 segundos
+        setTimeout(() => {
+            this.classList.remove('disabled');
+            this.innerHTML = originalContent;
+        }, 3000);
+    });
+
 </script>
 @endpush
 @endsection

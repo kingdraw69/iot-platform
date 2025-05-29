@@ -109,6 +109,12 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link" href="{{ route('alert-rules.create') }}">
+                                    <i class="fas fa-bell"></i> Configurar Alertas
+                                </a>
+                            </li>
+                            
+                            <li class="nav-item">
                                 <a class="nav-link {{ request()->is('alerts*') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
                                     <i class="fas fa-bell me-2"></i> Alertas
                                     @if($unresolvedAlertsCount = \App\Models\Alert::where('resolved', false)->count())

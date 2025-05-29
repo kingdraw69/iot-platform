@@ -21,8 +21,7 @@ class SensorDataController extends Controller
         ]);
 
         // Validar API_KEY
-        if (!$request->has('api_key') || 
-            $request->api_key !== $sensor->device->api_key) {
+        if ($request->api_key !== config('app.api_key')) {
             return response()->json([
                 'error' => 'Unauthorized',
                 'message' => 'API_KEY inválida o faltante'

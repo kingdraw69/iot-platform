@@ -90,9 +90,11 @@
                 
                 <!-- Estado -->
                 <div class="col-md-6">
+                    <!-- Campo oculto para enviar 0 si el checkbox está desmarcado -->
+                    <input type="hidden" name="status" value="0">
                     <div class="form-check form-switch mt-3 ps-5">
                         <input class="form-check-input" type="checkbox" 
-                               id="status" name="status" 
+                               id="status" name="status" value="1"
                                {{ old('status', true) ? 'checked' : '' }}>
                         <label class="form-check-label" for="status">Sensor Activo</label>
                     </div>
