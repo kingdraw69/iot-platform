@@ -23,17 +23,24 @@ class Alert extends Model
 
     public static function sendDangerAlertEmail($alertDetails)
     {
-        $emailData = [
-            'device' => $alertDetails['device'],
-            'location' => $alertDetails['location'],
-            'sensor' => $alertDetails['sensor'],
-            'message' => $alertDetails['message'],
-            'value' => $alertDetails['value'],
-        ];
+        try {
+            $emailData = [
+                'device' => (string) $alertDetails['device'],
+                'location' => (string) $alertDetails['location'],
+                'sensor' => (string) $alertDetails['sensor'],
+                'message' => (string) $alertDetails['message'],
+                'value' => (string) $alertDetails['value'],
+            ];
 
-        Mail::send('emails.alert', $emailData, function ($message) use ($alertDetails) {
-            $message->to(env('recipient_email'))
-                    ->subject('Alerta de Peligro Detectada');
-        });
+            Mail::send('emails.alert', $emailData, function ($message) {
+                $message->to(config('mail.recipient_email'))
+                        ->subject('Alerta de Peligro Detectada');
+            });
+
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Error enviando email de alerta: ' . $e->getMessage());
+            return false;
+        }
     }
 }
