@@ -39,6 +39,7 @@ class DeviceController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('Solicitud recibida para crear un dispositivo', $request->all());
         // Validación de datos
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
@@ -53,6 +54,7 @@ class DeviceController extends Controller
         try {
             // Usar el servicio para crear el dispositivo
             $device = $this->service->createDevice($validatedData);
+            Log::info('Dispositivo creado exitosamente', ['device' => $device]);
             
             if ($device) {
                 return redirect()->route('devices.index')
@@ -63,7 +65,7 @@ class DeviceController extends Controller
                 ->with('error', 'Error al crear el dispositivo. Por favor intente nuevamente.');
                 
         } catch (\Exception $e) {
-            Log::error('Error al crear dispositivo: ' . $e->getMessage());
+            Log::error('Error al crear dispositivo', ['error' => $e->getMessage()]);
             return back()->withInput()
                 ->with('error', 'Error al crear el dispositivo. Por favor intente nuevamente.');
         }

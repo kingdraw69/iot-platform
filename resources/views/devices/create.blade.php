@@ -124,4 +124,14 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function(event) {
+        console.log('Formulario enviado');
+    });
+
+    document.querySelector('button[type="submit"]').addEventListener('click', function() {
+        console.log('Botón de guardar presionado');
+    });
+</script>
 @endsection

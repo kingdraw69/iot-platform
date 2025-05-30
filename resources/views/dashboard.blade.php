@@ -44,9 +44,13 @@
                     <!-- Selección de dispositivo -->
                     <select id="deviceSelect" class="form-select me-2">
                         <option value="" disabled selected>Seleccione un dispositivo</option>
-                        @foreach($devices as $device)
-                            <option value="{{ $device->id }}">{{ $device->name }}</option>
-                        @endforeach
+                        @if($devices->isEmpty())
+                            <option value="" disabled>No hay dispositivos disponibles</option>
+                        @else
+                            @foreach($devices as $device)
+                                <option value="{{ $device->id }}">{{ $device->name }}</option>
+                            @endforeach
+                        @endif
                     </select>
 
                     <!-- Selección de sensor -->
