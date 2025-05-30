@@ -22,8 +22,9 @@ class DashboardController extends Controller
 
         $devices = Device::with('classroom')->get();
         $sensorTypes = SensorType::all();
+        $sensors = \App\Models\Sensor::with('sensorType')->get();
 
-        return view('dashboard', compact('totalDevices', 'activeDevices', 'activeAlerts', 'latestReadings', 'devices', 'sensorTypes'));
+        return view('dashboard', compact('totalDevices', 'activeDevices', 'activeAlerts', 'latestReadings', 'devices', 'sensorTypes', 'sensors'));
     }
     
     public function getSensors(Device $device)

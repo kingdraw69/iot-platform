@@ -17,10 +17,11 @@ class DeviceTypeSeeder extends Seeder
             ['name' => 'Calidad de Ambiente', 'description' => 'Dispositivos para monitorear la calidad del ambiente en el aula'],
             ['name' => 'Pánico', 'description' => 'Dispositivos de emergencia para situaciones de pánico'],
             ['name' => 'Desastres', 'description' => 'Dispositivos para detectar y prevenir desastres'],
+            ['name' => 'Sensor Único', 'description' => 'Dispositivo único para pruebas'],
         ];
 
         foreach ($types as $type) {
-            DeviceType::create($type);
+            DeviceType::updateOrCreate(['name' => $type['name']], $type);
         }
     }
 }

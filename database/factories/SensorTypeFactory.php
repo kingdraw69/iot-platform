@@ -29,10 +29,10 @@ class SensorTypeFactory extends Factory
         $type = $this->faker->randomElement($sensorTypes);
 
         return [
-            'name' => $type['name'],
-            'unit' => $type['unit'],
-            'min_range' => $type['min_range'],
-            'max_range' => $type['max_range'],
+            'name' => $this->faker->unique()->word(), // Generar nombres únicos
+            'unit' => $this->faker->randomElement(['°C', '%', 'ppm', 'g']),
+            'min_range' => $this->faker->numberBetween(-10, 0),
+            'max_range' => $this->faker->numberBetween(1, 100),
         ];
     }
 }

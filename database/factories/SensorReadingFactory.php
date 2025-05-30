@@ -20,8 +20,8 @@ class SensorReadingFactory extends Factory
         $sensorType = $sensor->sensorType;
         return [
             'sensor_id' => $sensor->id,
-            'value' => $this->faker->randomFloat(2, $sensorType->min_range, $sensorType->max_range),
-            'reading_time' => $this->faker->dateTimeThisMonth,
+            'value' => $this->faker->unique()->randomFloat(2, $sensorType->min_range, $sensorType->max_range), // Generar valores únicos
+            'reading_time' => $this->faker->unique()->dateTimeThisMonth(),
         ];
     }
 }

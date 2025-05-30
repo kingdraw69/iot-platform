@@ -17,12 +17,10 @@ class SensorFactory extends Factory
     public function definition(): array
     {
         return [
-            
             'device_id' => \App\Models\Device::factory(),
             'sensor_type_id' => \App\Models\SensorType::factory(),
-            'name' => $this->faker->word . ' Sensor',
+            'name' => $this->faker->unique()->word . ' Sensor', // Generar nombres únicos
             'status' => $this->faker->boolean(90),
-            
         ];
     }
 }

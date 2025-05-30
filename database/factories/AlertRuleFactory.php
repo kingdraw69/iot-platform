@@ -16,14 +16,12 @@ class AlertRuleFactory extends Factory
      */
     public function definition(): array
     {
-        $sensorType = \App\Models\SensorType::factory()->create();
-        $severities = ['info', 'warning', 'danger'];
         return [
-            'sensor_type_id' => $sensorType->id,
-            'min_value' => $this->faker->optional()->randomFloat(2, $sensorType->min_range, $sensorType->max_range * 0.8),
-            'max_value' => $this->faker->optional()->randomFloat(2, $sensorType->min_range * 1.2, $sensorType->max_range),
-            'severity' => $this->faker->randomElement($severities),
-            'message' => $this->faker->sentence,
+            'sensor_type_id' => \App\Models\SensorType::factory()->create()->id,
+            'min_value' => $this->faker->unique()->randomFloat(2, 0, 50), // Generar valores únicos
+            'max_value' => $this->faker->unique()->randomFloat(2, 51, 100),
+            'severity' => $this->faker->randomElement(['info', 'warning', 'danger']),
+            'message' => $this->faker->unique()->sentence(),
         ];
     }
 }

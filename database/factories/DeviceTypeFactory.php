@@ -26,7 +26,7 @@ class DeviceTypeFactory extends Factory
             'Sound Sensor',
         ];
         return [
-            'name' => $this->faker->unique()->randomElement($types),
+            'name' => $this->faker->unique()->word(), // Generar nombres únicos
             'description' => $this->faker->sentence(),
         ];
     }

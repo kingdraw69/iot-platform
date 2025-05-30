@@ -14,6 +14,16 @@ class SensorReadingObserver
 
         foreach ($alertRules as $rule) {
             if ($sensorReading->value < $rule->min_value || $sensorReading->value > $rule->max_value) {
+                $alertDetails = [
+                    'device' => $sensorReading->sensor->device->name,
+                    'location' => $sensorReading->sensor->device->location,
+                    'sensor' => $sensorReading->sensor->name,
+                    'message' => $rule->message,
+                    'value' => $sensorReading->value,
+                ];
+
+                Alert::sendDangerAlertEmail($alertDetails);
+
                 Alert::create([
                     'sensor_reading_id' => $sensorReading->id,
                     'alert_rule_id' => $rule->id,

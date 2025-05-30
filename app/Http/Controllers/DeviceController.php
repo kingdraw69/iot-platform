@@ -8,6 +8,7 @@ use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Services\DeviceService;
+use App\Events\DeviceCommunicationReceived;
 
 
 class DeviceController extends Controller
@@ -126,5 +127,13 @@ class DeviceController extends Controller
             Log::error('Error al cambiar estado del dispositivo: ' . $e->getMessage());
             return back()->with('error', 'Error al cambiar el estado del dispositivo');
         }
+    }
+
+    public function registerCommunication(Request $request, Device $device)
+    {
+        // Lógica para registrar comunicación
+        event(new DeviceCommunicationReceived($device));
+
+        return response()->json(['message' => 'Comunicación registrada exitosamente']);
     }
 }
