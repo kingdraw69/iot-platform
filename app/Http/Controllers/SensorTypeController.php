@@ -32,6 +32,20 @@ class SensorTypeController extends Controller
         return view('sensor-types.edit', compact('sensorType'));
     }
 
+    public function update(Request $request, SensorType $sensorType)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'unit' => 'required|string|max:50',
+            'min_range' => 'required|numeric',
+            'max_range' => 'required|numeric|gt:min_range',
+        ]);
+
+        $sensorType->update($validatedData);
+
+        return redirect()->route('sensor-types.create')->with('success', 'Tipo de sensor actualizado correctamente.');
+    }
+
     public function destroy(SensorType $sensorType)
     {
         $sensorType->delete();

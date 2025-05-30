@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\DangerAlertMail;
 
 class Alert extends Model
 {
@@ -28,14 +29,11 @@ class Alert extends Model
                 'device' => (string) $alertDetails['device'],
                 'location' => (string) $alertDetails['location'],
                 'sensor' => (string) $alertDetails['sensor'],
-                'message' => (string) $alertDetails['message'],
+                'alert_message' => (string) $alertDetails['alert_message'],
                 'value' => (string) $alertDetails['value'],
             ];
 
-            Mail::send('emails.alert', $emailData, function ($message) {
-                $message->to(config('mail.recipient_email'))
-                        ->subject('Alerta de Peligro Detectada');
-            });
+            Mail::to(config('mail.recipient_email'))->send(new DangerAlertMail($emailData));
 
             return true;
         } catch (\Exception $e) {
