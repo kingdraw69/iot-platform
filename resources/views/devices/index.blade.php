@@ -127,8 +127,8 @@
                                 <div class="d-flex align-items-center">
                                     <form action="{{ route('devices.toggle-status', $device) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-{{ $device->status ? 'secondary' : 'success' }}"
-                                                title="{{ $device->status ? 'Apagar' : 'Encender' }}">
+                                        <button type="submit" class="btn btn-sm btn-{{ $device->status ? 'success' : 'secondary' }}"
+                                                title="{{ $device->status ? 'Activo' : 'Inactivo' }}">
                                             <i class="fas fa-power-off"></i>
                                         </button>
                                     </form>
@@ -137,7 +137,9 @@
                             <td>
                                 @if($device->last_communication)
                                 <div class="d-flex flex-column">
-                                    <span class="text-dark fw-bold">{{ $device->last_communication->diffForHumans() }}</span>
+                                    <span class="text-{{ $device->status ? 'success' : 'muted' }} fw-bold">
+                                        {{ $device->last_communication->diffForHumans() }}
+                                    </span>
                                     <small class="text-muted">{{ $device->last_communication->format('d/m/Y H:i') }}</small>
                                 </div>
                                 @else

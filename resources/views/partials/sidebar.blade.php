@@ -28,6 +28,11 @@
                     @endif
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('sensor-types/create') ? 'active' : '' }}" href="{{ route('sensor-types.create') }}">
+                    <i class="fas fa-cogs"></i> Crear Tipo de Sensor
+                </a>
+            </li>
         </ul>
     </nav>
 </div>

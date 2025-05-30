@@ -122,6 +122,11 @@
                                     @endif
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('sensor-types.create') }}">
+                                    <i class="fas fa-cogs me-1"></i> Crear Tipo de Sensor
+                                </a>
+                            </li>
                             <li class="nav-item mt-3">
                                 <hr class="dropdown-divider bg-light">
                             </li>

@@ -6,6 +6,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\SensorController;
 use App\Http\Controllers\AlertController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\SensorTypeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,7 +33,7 @@ Route::get('sensors/{sensor}/edit', [SensorController::class, 'edit'])->name('se
 // Alertas
 Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
 Route::get('alerts/unresolved', [AlertController::class, 'unresolved'])->name('alerts.unresolved');
-Route::post('alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
+Route::put('alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
 
 
 Route::get('sensors/{sensor}/download', [SensorController::class, 'downloadReadings'])
@@ -47,3 +48,10 @@ use App\Http\Controllers\AlertRuleController;
 Route::get('alert-rules/create', [AlertRuleController::class, 'create'])->name('alert-rules.create');
 Route::post('alert-rules', [AlertRuleController::class, 'store'])->name('alert-rules.store');
 Route::delete('alert-rules/{alertRule}', [AlertRuleController::class, 'destroy'])->name('alert-rules.destroy');
+
+// Tipos de Sensores
+Route::get('sensor-types/create', [SensorTypeController::class, 'create'])->name('sensor-types.create');
+Route::post('sensor-types', [SensorTypeController::class, 'store'])->name('sensor-types.store');
+Route::get('sensor-types/{sensorType}/edit', [SensorTypeController::class, 'edit'])->name('sensor-types.edit');
+Route::put('sensor-types/{sensorType}', [SensorTypeController::class, 'update'])->name('sensor-types.update');
+Route::delete('sensor-types/{sensorType}', [SensorTypeController::class, 'destroy'])->name('sensor-types.destroy');

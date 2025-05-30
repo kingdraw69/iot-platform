@@ -50,6 +50,26 @@
                     <textarea name="message" id="message" class="form-control" required></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label for="device_id">Dispositivo</label>
+                    <select name="device_id" id="device_id" class="form-control" required>
+                        <option value="">Seleccione un dispositivo</option>
+                        @foreach($devices as $device)
+                            <option value="{{ $device->id }}">{{ $device->name }} ({{ $device->serial_number }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="sensor_id">Sensor</label>
+                    <select name="sensor_id" id="sensor_id" class="form-control" required>
+                        <option value="">Seleccione un sensor</option>
+                        @foreach($sensors as $sensor)
+                            <option value="{{ $sensor->id }}">{{ $sensor->name }} ({{ $sensor->device->name }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Guardar Regla</button>
             </form>
         </div>

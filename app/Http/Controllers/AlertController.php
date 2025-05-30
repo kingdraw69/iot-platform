@@ -13,7 +13,9 @@ class AlertController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('alerts.index', compact('alerts'));
+        $alertHistory = Alert::where('resolved', true)->orderBy('updated_at', 'desc')->paginate(20);
+
+        return view('alerts.index', compact('alerts', 'alertHistory'));
     }
 
     public function resolve(Alert $alert)
@@ -34,5 +36,11 @@ class AlertController extends Controller
             ->paginate(20);
             
         return view('alerts.unresolved', compact('alerts'));
+    }
+
+    public function history()
+    {
+        $alertHistory = Alert::where('resolved', true)->orderBy('updated_at', 'desc')->paginate(20);
+        return view('alerts.history', compact('alertHistory'));
     }
 }

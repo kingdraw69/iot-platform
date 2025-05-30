@@ -28,6 +28,59 @@
                     </div>
                 </div>
 
+                <!-- Número de Serie -->
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control @error('serial_number') is-invalid @enderror" 
+                               id="serial_number" name="serial_number" placeholder=" " 
+                               value="{{ old('serial_number', $device->serial_number ?? '') }}" required>
+                        <label for="serial_number">Número de Serie</label>
+                        @error('serial_number')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <!-- Tipo de Dispositivo -->
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <select class="form-select @error('device_type_id') is-invalid @enderror" 
+                                id="device_type_id" name="device_type_id" required>
+                            <option value="" disabled selected>Seleccione un tipo</option>
+                            @foreach ($deviceTypes as $type)
+                                <option value="{{ $type->id }}" 
+                                    {{ old('device_type_id', $device->device_type_id ?? '') == $type->id ? 'selected' : '' }}>
+                                    {{ $type->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <label for="device_type_id">Tipo de Dispositivo</label>
+                        @error('device_type_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <!-- Ubicación (Aula) -->
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <select class="form-select @error('classroom_id') is-invalid @enderror" 
+                                id="classroom_id" name="classroom_id" required>
+                            <option value="" disabled selected>Seleccione una ubicación</option>
+                            @foreach($classrooms as $classroom)
+                                <option value="{{ $classroom->id }}" 
+                                    {{ old('classroom_id', $device->classroom_id ?? '') == $classroom->id ? 'selected' : '' }}>
+                                    {{ $classroom->name }} (Edificio {{ $classroom->building }}, Piso {{ $classroom->floor }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <label for="classroom_id">Ubicación (Aula)</label>
+                        @error('classroom_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
                 <!-- Dirección IP -->
                 <div class="col-md-4">
                     <div class="form-floating">
@@ -49,48 +102,6 @@
                                value="{{ old('mac_address', $device->mac_address ?? '') }}">
                         <label for="mac_address">Dirección MAC</label>
                         @error('mac_address')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <!-- Ubicación -->
-                <div class="col-md-6">
-                    <div class="form-floating">
-                        <select class="form-select @error('classroom_id') is-invalid @enderror" 
-                                id="classroom_id" name="classroom_id" required>
-                            <option value="" disabled selected>Seleccione una ubicación</option>
-                            @foreach($classrooms as $classroom)
-                                <option value="{{ $classroom->id }}" 
-                                    {{ old('classroom_id', $device->classroom_id ?? '') == $classroom->id ? 'selected' : '' }}>
-                                    {{ $classroom->name }} (Edificio {{ $classroom->building }}, Piso {{ $classroom->floor }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <label for="classroom_id">Ubicación (Aula)</label>
-                        @error('classroom_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-3">
-                <!-- Tipo de Dispositivo -->
-                <div class="col-md-6">
-                    <div class="form-floating">
-                        <select class="form-select @error('device_type_id') is-invalid @enderror" 
-                                id="device_type_id" name="device_type_id" required>
-                            <option value="" disabled selected>Seleccione un tipo</option>
-                            @foreach ($deviceTypes as $type)
-                                <option value="{{ $type->id }}" 
-                                    {{ old('device_type_id', $device->device_type_id ?? '') == $type->id ? 'selected' : '' }}>
-                                    {{ $type->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <label for="device_type_id">Tipo de Dispositivo</label>
-                        @error('device_type_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -124,14 +135,4 @@
         </form>
     </div>
 </div>
-
-<script>
-    document.querySelector('form').addEventListener('submit', function(event) {
-        console.log('Formulario enviado');
-    });
-
-    document.querySelector('button[type="submit"]').addEventListener('click', function() {
-        console.log('Botón de guardar presionado');
-    });
-</script>
 @endsection
