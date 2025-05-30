@@ -17,45 +17,63 @@ class AlertRuleSeeder extends Seeder
         // Reglas para temperatura
         $temp = SensorType::where('name', 'Temperatura')->first();
         AlertRule::create([
+            'name' => 'Temperatura Alta',
             'sensor_type_id' => $temp->id,
             'min_value' => null,
             'max_value' => 30,
             'severity' => 'warning',
-            'message' => 'Temperatura alta en el aula'
+            'message' => 'Temperatura alta en el aula',
         ]);
         AlertRule::create([
+            'name' => 'Temperatura Baja',
             'sensor_type_id' => $temp->id,
             'min_value' => 10,
             'max_value' => null,
             'severity' => 'warning',
-            'message' => 'Temperatura baja en el aula'
+            'message' => 'Temperatura baja en el aula',
         ]);
 
         // Reglas para humedad
         $humidity = SensorType::where('name', 'Humedad')->first();
         AlertRule::create([
+            'name' => 'Humedad Alta',
             'sensor_type_id' => $humidity->id,
             'min_value' => null,
             'max_value' => 70,
             'severity' => 'warning',
-            'message' => 'Humedad alta en el aula'
+            'message' => 'Humedad alta en el aula',
         ]);
         AlertRule::create([
+            'name' => 'Humedad Baja',
             'sensor_type_id' => $humidity->id,
             'min_value' => 30,
             'max_value' => null,
             'severity' => 'warning',
-            'message' => 'Humedad baja en el aula'
+            'message' => 'Humedad baja en el aula',
+        ]);
+        AlertRule::create([
+            'name' => 'Humedad Baja Crítica',
+            'message' => 'La humedad está por debajo del nivel mínimo.',
+            'sensor_type_id' => $humidity->id,
         ]);
 
         // Reglas para monóxido de carbono
         $co = SensorType::where('name', 'Monóxido de Carbono')->first();
         AlertRule::create([
+            'name' => 'Nivel Peligroso de Monóxido de Carbono',
             'sensor_type_id' => $co->id,
             'min_value' => null,
-            'max_value' => 35,
+            'max_value' => 50,
             'severity' => 'danger',
-            'message' => 'Niveles peligrosos de CO en el aula'
+            'message' => 'Nivel peligroso de monóxido de carbono',
+        ]);
+        AlertRule::create([
+            'name' => 'Nivel Moderado de Monóxido de Carbono',
+            'sensor_type_id' => $co->id,
+            'min_value' => 10,
+            'max_value' => null,
+            'severity' => 'warning',
+            'message' => 'Nivel moderado de monóxido de carbono',
         ]);
 
         // Reglas para humo
@@ -93,6 +111,30 @@ class AlertRuleSeeder extends Seeder
             'max_value' => 4,
             'severity' => 'danger',
             'message' => 'Vibraciones fuertes detectadas - Posible terremoto'
+        ]);
+
+        // Reglas para presión atmosférica
+        $pressure = SensorType::where('name', 'Presión Atmosférica')->first();
+        AlertRule::create([
+            'sensor_type_id' => $pressure->id,
+            'min_value' => null,
+            'max_value' => 1010,
+            'severity' => 'info',
+            'message' => 'Presión atmosférica baja'
+        ]);
+        AlertRule::create([
+            'sensor_type_id' => $pressure->id,
+            'min_value' => 1020,
+            'max_value' => null,
+            'severity' => 'info',
+            'message' => 'Presión atmosférica alta'
+        ]);
+
+        // Reglas adicionales
+        AlertRule::create([
+            'name' => 'Movimiento Detectado',
+            'message' => 'Se ha detectado movimiento en el área.',
+            'sensor_type_id' => $vibration->id,
         ]);
     }
 }

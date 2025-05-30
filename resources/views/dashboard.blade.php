@@ -99,224 +99,47 @@
 </div>
 
 @push('scripts')
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0"></script>
 <script>
-    // Configuración del gráfico
-
-    const ctx = document.getElementById('sensorsChart').getContext('2d');
-    let sensorsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [], // Etiquetas vacías inicialmente
-            datasets: [{
-                label: 'Lectura del sensor',
-                data: [],
-                borderColor: '#2196F3',
-                backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                borderWidth: 2,
-                tension: 0.3,
-                pointRadius: 0,
-            }]
-        },
-        options: {
-            responsive: true,
-            animation: {
-                duration: 500,
-            },
-            scales: {
-                x: {
-                    display: true,
-                    title: {
-                        display: true,
-                        text: 'Tiempo'
-                    }
-                },
-                y: {
-                    display: true,
-                    title: {
-                        display: true,
-                        text: 'Valor'
-                    }
-                }
-            }
-        }
-    });
-
     document.addEventListener('DOMContentLoaded', function () {
-        const deviceSelect = document.getElementById('deviceSelect');
-        const sensorSelect = document.getElementById('sensorSelect');
-        const realTimeToggle = document.getElementById('realTimeToggle');
-
-        let refreshInterval = null;
-
-        // Función para reiniciar la gráfica
-        function resetChart() {
-            sensorsChart.data.labels = [];
-            sensorsChart.data.datasets[0].data = [];
-            sensorsChart.update();
-        }
-
-        // Event listener para el selector de dispositivos
-        deviceSelect.addEventListener('change', async function () {
-            const deviceId = this.value;
-
-            // Limpiar las opciones anteriores del selector de sensores
-            sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
-            resetChart(); // Reiniciar la gráfica
-
-            if (deviceId) {
-                try {
-                    const response = await fetch(`/api/devices/${deviceId}/sensors`);
-                    if (!response.ok) {
-                        throw new Error(`Error en la API: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-
-                    if (Array.isArray(data) && data.length > 0) {
-                        data.forEach(sensor => {
-                            const option = document.createElement('option');
-                            option.value = sensor.id;
-                            option.textContent = sensor.name;
-                            sensorSelect.appendChild(option);
-                        });
-                    } else {
-                        const option = document.createElement('option');
-                        option.value = "";
-                        option.textContent = "No hay sensores disponibles";
-                        sensorSelect.appendChild(option);
-                    }
-                } catch (error) {
-                    console.error('Error al cargar sensores:', error);
-                    alert('Error al cargar sensores del dispositivo: ' + error.message);
-                }
-            }
-        });
-
-        // Event listener para el selector de sensores
-        sensorSelect.addEventListener('change', function () {
-            const sensorId = this.value;
-
-            if (refreshInterval) clearInterval(refreshInterval); // Detener actualizaciones en tiempo real
-            resetChart(); // Reiniciar la gráfica
-
-            if (sensorId) {
-                if (realTimeToggle.checked) {
-                    startLiveUpdates(sensorId);
-                } else {
-                    loadSensorReadings(sensorId);
-                }
-            }
-        });
-
-        // Función para cargar lecturas históricas
-        async function loadSensorReadings(sensorId) {
-            try {
-                const response = await fetch(`/api/sensors/${sensorId}/readings`);
-                if (!response.ok) {
-                    throw new Error(`Error en la API: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-
-                const labels = data.map(reading => reading.reading_time.replace('T', ' ').slice(0, 19));
-                const values = data.map(reading => parseFloat(reading.value));
-
-                sensorsChart.data.labels = labels;
-                sensorsChart.data.datasets[0].data = values;
-                sensorsChart.update();
-            } catch (error) {
-                console.error('Error al cargar lecturas:', error);
-                alert('Error al cargar lecturas: ' + error.message);
-            }
-        }
-
-        // Función para actualizaciones en tiempo real
-        function startLiveUpdates(sensorId) {
-            refreshInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
-                    if (!response.ok) {
-                        throw new Error(`Error en la API: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    const lectura = data[0]; // Ajustar según la estructura de la respuesta
-
-                    if (lectura) {
-                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
-                        const valor = parseFloat(lectura.value);
-
-                        if (!sensorsChart.data.labels.includes(tiempo)) {
-                            agregarNuevoDato(tiempo, valor);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error al actualizar lecturas en vivo:', error);
-                }
-            }, 2000);
-        }
-
-        // Función para agregar nuevo dato al gráfico
-        function agregarNuevoDato(tiempo, valor) {
-            sensorsChart.data.labels.push(tiempo);
-            sensorsChart.data.datasets[0].data.push(valor);
-
-            if (sensorsChart.data.labels.length > 100) {
-                sensorsChart.data.labels.shift();
-                sensorsChart.data.datasets[0].data.shift();
-            }
-
-            sensorsChart.update();
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const addChartButton = document.getElementById('addChartButton');
         const chartsContainer = document.getElementById('chartsContainer');
+        const addChartButton = document.getElementById('addChartButton');
 
-        let chartCount = 0;
-
-        addChartButton.addEventListener('click', function() {
-            chartCount++;
-
-            const chartCard = document.createElement('div');
-            chartCard.className = 'card mb-3';
-            chartCard.id = `chartCard_${chartCount}`;
+        // Agregar nuevo gráfico
+        addChartButton.addEventListener('click', function () {
+            const chartId = `chart-${Date.now()}`;
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'card mb-3';
 
             const chartHeader = document.createElement('div');
             chartHeader.className = 'card-header d-flex justify-content-between align-items-center';
             chartHeader.innerHTML = `<h5>Monitor de Sensores en Tiempo Real</h5>
-                                     <button class="btn btn-danger btn-sm" onclick="removeChart(${chartCount})">Eliminar</button>`;
+                                     <button class="btn btn-danger btn-sm" onclick="removeChart('${chartId}')">Eliminar</button>`;
 
             const chartBody = document.createElement('div');
             chartBody.className = 'card-body';
             chartBody.innerHTML = `<div class="d-flex align-items-center mb-3">
-                                        <select id="deviceSelect_${chartCount}" class="form-select me-2">
+                                        <select id="deviceSelect_${chartId}" class="form-select me-2">
                                             <option value="" disabled selected>Seleccione un dispositivo</option>
                                             @foreach($devices as $device)
                                                 <option value="{{ $device->id }}">{{ $device->name }}</option>
                                             @endforeach
                                         </select>
-                                        <select id="sensorSelect_${chartCount}" class="form-select">
+                                        <select id="sensorSelect_${chartId}" class="form-select">
                                             <option value="" disabled selected>Seleccione un sensor</option>
                                         </select>
                                     </div>
-                                    <canvas id="sensorsChart_${chartCount}" height="300"></canvas>`;
+                                    <canvas id="sensorsChart_${chartId}" height="300"></canvas>`;
 
-            chartCard.appendChild(chartHeader);
-            chartCard.appendChild(chartBody);
-            chartsContainer.appendChild(chartCard);
+            chartDiv.appendChild(chartHeader);
+            chartDiv.appendChild(chartBody);
+            chartsContainer.appendChild(chartDiv);
 
-            initializeChart(chartCount);
+            initializeChart(chartId); // Inicializar el nuevo gráfico
         });
 
-        window.removeChart = function(chartId) {
-            const chartCard = document.getElementById(`chartCard_${chartId}`);
-            chartsContainer.removeChild(chartCard);
+        window.removeChart = function (chartId) {
+            const chartDiv = document.getElementById(`sensorsChart_${chartId}`).closest('.card');
+            chartsContainer.removeChild(chartDiv);
         };
 
         function initializeChart(chartId) {
@@ -362,9 +185,7 @@
                 }
             });
 
-            let refreshInterval = null;
-
-            deviceSelect.addEventListener('change', async function() {
+            deviceSelect.addEventListener('change', async function () {
                 const deviceId = this.value;
                 sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
 
@@ -390,45 +211,116 @@
                 }
             });
 
-            sensorSelect.addEventListener('change', function() {
+            sensorSelect.addEventListener('change', function () {
                 const sensorId = this.value;
 
-                if (refreshInterval) clearInterval(refreshInterval); // Detener actualizaciones en tiempo real
-
                 if (sensorId) {
-                    refreshInterval = setInterval(async () => {
-                        try {
-                            const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
-                            if (!response.ok) {
-                                throw new Error(`Error en la API: ${response.statusText}`);
-                            }
-
-                            const data = await response.json();
-                            const lectura = data[0];
-
-                            if (lectura) {
-                                const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
-                                const valor = parseFloat(lectura.value);
-
-                                if (!chartInstance.data.labels.includes(tiempo)) {
-                                    chartInstance.data.labels.push(tiempo);
-                                    chartInstance.data.datasets[0].data.push(valor);
-
-                                    if (chartInstance.data.labels.length > 100) {
-                                        chartInstance.data.labels.shift();
-                                        chartInstance.data.datasets[0].data.shift();
-                                    }
-
-                                    chartInstance.update();
-                                }
-                            }
-                        } catch (error) {
-                            console.error('Error al actualizar lecturas en vivo:', error);
-                        }
-                    }, 2000);
+                    startLiveUpdates(sensorId, chartInstance);
                 }
             });
         }
+
+        function startLiveUpdates(sensorId, chartInstance) {
+            setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
+                    if (!response.ok) {
+                        throw new Error(`Error en la API: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    const lectura = data[0];
+
+                    if (lectura) {
+                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
+                        const valor = parseFloat(lectura.value);
+
+                        if (!chartInstance.data.labels.includes(tiempo)) {
+                            chartInstance.data.labels.push(tiempo);
+                            chartInstance.data.datasets[0].data.push(valor);
+
+                            if (chartInstance.data.labels.length > 100) {
+                                chartInstance.data.labels.shift();
+                                chartInstance.data.datasets[0].data.shift();
+                            }
+
+                            chartInstance.update();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar lecturas en vivo:', error);
+                }
+            }, 2000);
+        }
+
+        // Inicializar la gráfica principal
+        const ctx = document.getElementById('sensorsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Lectura del sensor',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 500,
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Tiempo'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Valor'
+                        }
+                    }
+                }
+            }
+        });
+
+        const deviceSelect = document.getElementById('deviceSelect');
+        const sensorSelect = document.getElementById('sensorSelect');
+
+        deviceSelect.addEventListener('change', async function () {
+            const deviceId = this.value;
+            sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
+
+            if (deviceId) {
+                try {
+                    const response = await fetch(`/api/devices/${deviceId}/sensors`);
+                    if (!response.ok) {
+                        throw new Error(`Error en la API: ${response.statusText}`);
+                    }
+
+                    const sensors = await response.json();
+
+                    sensors.forEach(sensor => {
+                        const option = document.createElement('option');
+                        option.value = sensor.id;
+                        option.textContent = sensor.name;
+                        sensorSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error al cargar sensores:', error);
+                    alert('Error al cargar sensores del dispositivo: ' + error.message);
+                }
+            }
+        });
     });
 </script>
 @endpush
