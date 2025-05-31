@@ -35,7 +35,7 @@ class AlertRuleController extends Controller
 
             AlertRule::create($validated);
 
-            return redirect()->back()->with('success', 'Regla de alerta creada correctamente');
+            return redirect()->route('alert-rules.create')->with('success', 'Regla de alerta creada correctamente');
         } catch (\Exception $e) {
             Log::error('Error al crear regla de alerta: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error al crear la regla de alerta')->withInput();
