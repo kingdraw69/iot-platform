@@ -23,6 +23,7 @@ class SensorTypeSeeder extends Seeder
             ['name' => 'Oxígeno', 'unit' => '%', 'min_range' => 0, 'max_range' => 25],
             ['name' => 'Vibración', 'unit' => 'g', 'min_range' => 0, 'max_range' => 16],
             ['name' => 'Sensor Único', 'unit' => 'unit', 'min_range' => 0, 'max_range' => 100],
+            ['name' => 'Presión Atmosférica', 'unit' => 'hPa', 'min_range' => 900, 'max_range' => 1100],
         ];
 
         foreach ($sensorTypes as $type) {

@@ -7,6 +7,7 @@ $app = require_once __DIR__ . '/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use Illuminate\Support\Facades\Mail;
+use App\Mail\DangerAlertMail;
 
 Mail::send('emails.alert', [
     'device' => 'Sensor X',
@@ -19,4 +20,4 @@ Mail::send('emails.alert', [
             ->subject('Prueba de correo');
 });
 
-echo "Correo enviado correctamente.";
+echo "Correo enviado exitosamente.";

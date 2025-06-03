@@ -102,14 +102,7 @@ class AlertRuleSeeder extends Seeder
             'sensor_type_id' => $vibration->id,
             'min_value' => null,
             'max_value' => 2,
-            'severity' => 'warning',
-            'message' => 'Vibraciones inusuales detectadas'
-        ]);
-        AlertRule::create([
-            'sensor_type_id' => $vibration->id,
-            'min_value' => null,
-            'max_value' => 4,
-            'severity' => 'danger',
+            'severity' => 'Alta',
             'message' => 'Vibraciones fuertes detectadas - Posible terremoto'
         ]);
 
@@ -119,14 +112,14 @@ class AlertRuleSeeder extends Seeder
             'sensor_type_id' => $pressure->id,
             'min_value' => null,
             'max_value' => 1010,
-            'severity' => 'info',
+            'severity' => 'Baja',
             'message' => 'Presión atmosférica baja'
         ]);
         AlertRule::create([
             'sensor_type_id' => $pressure->id,
             'min_value' => 1020,
             'max_value' => null,
-            'severity' => 'info',
+            'severity' => 'Baja',
             'message' => 'Presión atmosférica alta'
         ]);
 
@@ -135,6 +128,71 @@ class AlertRuleSeeder extends Seeder
             'name' => 'Movimiento Detectado',
             'message' => 'Se ha detectado movimiento en el área.',
             'sensor_type_id' => $vibration->id,
+        ]);
+
+        // Nuevas reglas de alerta
+        AlertRule::create([
+            'sensor_type_id' => 1,
+            'min_value' => null,
+            'max_value' => 200,
+            'severity' => 'Severidad Baja',
+            'message' => 'Niveles de luz demasiado bajos',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 2,
+            'min_value' => null,
+            'max_value' => 50,
+            'severity' => 'Severidad Alta',
+            'message' => 'Posible detección de humo',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 3,
+            'min_value' => null,
+            'max_value' => 300,
+            'severity' => 'Severidad Media',
+            'message' => 'Concentración alta de biodegradables',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 4,
+            'min_value' => -5,
+            'max_value' => 40,
+            'severity' => 'Severidad Alta',
+            'message' => 'Temperatura fuera de rango seguro',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 5,
+            'min_value' => null,
+            'max_value' => 100,
+            'severity' => 'Severidad Alta',
+            'message' => 'Vibración inusual detectada',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 6,
+            'min_value' => 400,
+            'max_value' => 1000,
+            'severity' => 'Severidad Media',
+            'message' => 'CO₂ en aumento',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 7,
+            'min_value' => null,
+            'max_value' => 50,
+            'severity' => 'Severidad Alta',
+            'message' => 'Monóxido de carbono peligroso',
+        ]);
+
+        AlertRule::create([
+            'sensor_type_id' => 8,
+            'min_value' => 19.5,
+            'max_value' => 23.5,
+            'severity' => 'Severidad Alta',
+            'message' => 'Nivel de oxígeno no óptimo',
         ]);
     }
 }

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->float('max_value')->nullable();
             $table->string('severity'); // info, warning, danger
             $table->string('message');
-            $table->string('name');
+            $table->string('name')->nullable()->default('Default Alert Rule');
             $table->timestamps();
         });
     }

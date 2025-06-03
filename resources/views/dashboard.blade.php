@@ -42,7 +42,7 @@
                     </div>
 
                     <!-- Selección de dispositivo -->
-                    <select id="deviceSelect" class="form-select me-2">
+                    <select id="deviceSelect_main" class="form-select me-2 device-select" aria-label="Seleccione un dispositivo">
                         <option value="" disabled selected>Seleccione un dispositivo</option>
                         @if($devices->isEmpty())
                             <option value="" disabled>No hay dispositivos disponibles</option>
@@ -54,13 +54,13 @@
                     </select>
 
                     <!-- Selección de sensor -->
-                    <select id="sensorSelect" class="form-select">
+                    <select id="sensorSelect_main" class="form-select sensor-select" aria-label="Seleccione un sensor">
                         <option value="" disabled selected>Seleccione un sensor</option>
                     </select>
                 </div>
             </div>
             <div class="card-body">
-                <canvas id="sensorsChart" height="300"></canvas>
+                <canvas id="sensorsChart_main" class="sensor-chart" height="300"></canvas>
             </div>
         </div>
     </div>
@@ -91,63 +91,55 @@
 
 <div class="row">
     <div class="col-md-12">
-        <button id="addChartButton" class="btn btn-primary mb-3">+ Agregar Monitor de Sensores</button>
-        <div id="chartsContainer">
-            <!-- Contenedor dinámico para monitores de sensores -->
-        </div>
+        <button id="addMonitorButton" class="btn btn-primary mb-3">Agregar Monitor de Sensores</button>
     </div>
+</div>
+<div id="monitorsContainer" class="row">
+    <!-- Aquí se agregarán los monitores dinámicamente -->
 </div>
 
 @push('scripts')
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    
+
+    // Suscripción al canal de sensores
+    const channel = pusher.subscribe('sensor');
+
     document.addEventListener('DOMContentLoaded', function () {
-        const chartsContainer = document.getElementById('chartsContainer');
-        const addChartButton = document.getElementById('addChartButton');
+        const monitorsContainer = document.getElementById('monitorsContainer');
+        const addMonitorButton = document.getElementById('addMonitorButton');
 
-        // Agregar nuevo gráfico
-        addChartButton.addEventListener('click', function () {
-            const chartId = `chart-${Date.now()}`;
-            const chartDiv = document.createElement('div');
-            chartDiv.className = 'card mb-3';
-
-            const chartHeader = document.createElement('div');
-            chartHeader.className = 'card-header d-flex justify-content-between align-items-center';
-            chartHeader.innerHTML = `<h5>Monitor de Sensores en Tiempo Real</h5>
-                                     <button class="btn btn-danger btn-sm" onclick="removeChart('${chartId}')">Eliminar</button>`;
-
-            const chartBody = document.createElement('div');
-            chartBody.className = 'card-body';
-            chartBody.innerHTML = `<div class="d-flex align-items-center mb-3">
-                                        <select id="deviceSelect_${chartId}" class="form-select me-2">
-                                            <option value="" disabled selected>Seleccione un dispositivo</option>
-                                            @foreach($devices as $device)
-                                                <option value="{{ $device->id }}">{{ $device->name }}</option>
-                                            @endforeach
-                                        </select>
-                                        <select id="sensorSelect_${chartId}" class="form-select">
-                                            <option value="" disabled selected>Seleccione un sensor</option>
-                                        </select>
-                                    </div>
-                                    <canvas id="sensorsChart_${chartId}" height="300"></canvas>`;
-
-            chartDiv.appendChild(chartHeader);
-            chartDiv.appendChild(chartBody);
-            chartsContainer.appendChild(chartDiv);
-
-            initializeChart(chartId); // Inicializar el nuevo gráfico
+        // Control del modo en vivo
+        let liveUpdateInterval;
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        realTimeToggle.addEventListener('change', function () {
+            if (!this.checked && liveUpdateInterval) {
+                clearInterval(liveUpdateInterval);
+            }
         });
 
-        window.removeChart = function (chartId) {
-            const chartDiv = document.getElementById(`sensorsChart_${chartId}`).closest('.card');
-            chartsContainer.removeChild(chartDiv);
+        window.removeMonitor = function (monitorId) {
+            document.getElementById(monitorId)?.remove();
         };
 
         function initializeChart(chartId) {
             const deviceSelect = document.getElementById(`deviceSelect_${chartId}`);
             const sensorSelect = document.getElementById(`sensorSelect_${chartId}`);
-            const ctx = document.getElementById(`sensorsChart_${chartId}`).getContext('2d');
+            const canvas = document.getElementById(`sensorsChart_${chartId}`);
+            
+            if (!deviceSelect || !sensorSelect || !canvas) {
+                console.error(`Elementos no encontrados para chartId: ${chartId}`);
+                return;
+            }
 
-            const chartInstance = new Chart(ctx, {
+            const ctx = canvas.getContext('2d');
+            let chartInstance = Chart.getChart(canvas);
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [],
@@ -158,14 +150,12 @@
                         backgroundColor: 'rgba(33, 150, 243, 0.2)',
                         borderWidth: 2,
                         tension: 0.3,
-                        pointRadius: 0,
+                        pointRadius: 0
                     }]
                 },
                 options: {
                     responsive: true,
-                    animation: {
-                        duration: 500,
-                    },
+                    animation: { duration: 500 },
                     scales: {
                         x: {
                             display: true,
@@ -185,142 +175,129 @@
                 }
             });
 
+            // Actualizar gráficos con Pusher
+            channel.bind('App\\Events\\NewSensorReading', function(data) {
+                const selectedSensorId = sensorSelect.value;
+                if (data.sensor_id == selectedSensorId) {
+                    const tiempo = data.reading_time.replace('T', ' ').slice(0, 19);
+                    const valor = parseFloat(data.value);
+                    if (!chartInstance.data.labels.includes(tiempo)) {
+                        chartInstance.data.labels.push(tiempo);
+                        chartInstance.data.datasets[0].data.push(valor);
+                        if (chartInstance.data.labels.length > 100) {
+                            chartInstance.data.labels.shift();
+                            chartInstance.data.datasets[0].data.shift();
+                        }
+                        chartInstance.update();
+                    }
+                }
+            });
+
             deviceSelect.addEventListener('change', async function () {
                 const deviceId = this.value;
                 sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
-
                 if (deviceId) {
-                    try {
-                        const response = await fetch(`/api/devices/${deviceId}/sensors`);
-                        if (!response.ok) {
-                            throw new Error(`Error en la API: ${response.statusText}`);
-                        }
-
-                        const sensors = await response.json();
-
-                        sensors.forEach(sensor => {
-                            const option = document.createElement('option');
-                            option.value = sensor.id;
-                            option.textContent = sensor.name;
-                            sensorSelect.appendChild(option);
-                        });
-                    } catch (error) {
-                        console.error('Error al cargar sensores:', error);
-                        alert('Error al cargar sensores del dispositivo: ' + error.message);
-                    }
+                    await loadSensors(deviceId, sensorSelect);
                 }
             });
 
             sensorSelect.addEventListener('change', function () {
                 const sensorId = this.value;
-
-                if (sensorId) {
+                if (sensorId && realTimeToggle.checked) {
                     startLiveUpdates(sensorId, chartInstance);
                 }
             });
         }
 
-        function startLiveUpdates(sensorId, chartInstance) {
-            setInterval(async () => {
-                try {
-                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
-                    if (!response.ok) {
-                        throw new Error(`Error en la API: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    const lectura = data[0];
-
-                    if (lectura) {
-                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
-                        const valor = parseFloat(lectura.value);
-
-                        if (!chartInstance.data.labels.includes(tiempo)) {
-                            chartInstance.data.labels.push(tiempo);
-                            chartInstance.data.datasets[0].data.push(valor);
-
-                            if (chartInstance.data.labels.length > 100) {
-                                chartInstance.data.labels.shift();
-                                chartInstance.data.datasets[0].data.shift();
-                            }
-
-                            chartInstance.update();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error al actualizar lecturas en vivo:', error);
+        async function loadSensors(deviceId, sensorSelect) {
+            try {
+                console.log(`Cargando sensores para deviceId: ${deviceId}`);
+                const response = await fetch(`/api/devices/${deviceId}/sensors`);
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
                 }
-            }, 2000);
-        }
-
-        // Inicializar la gráfica principal
-        const ctx = document.getElementById('sensorsChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Lectura del sensor',
-                    data: [],
-                    borderColor: '#2196F3',
-                    backgroundColor: 'rgba(33, 150, 243, 0.2)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 0,
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: {
-                    duration: 500,
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Tiempo'
-                        }
-                    },
-                    y: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Valor'
-                        }
-                    }
-                }
-            }
-        });
-
-        const deviceSelect = document.getElementById('deviceSelect');
-        const sensorSelect = document.getElementById('sensorSelect');
-
-        deviceSelect.addEventListener('change', async function () {
-            const deviceId = this.value;
-            sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
-
-            if (deviceId) {
-                try {
-                    const response = await fetch(`/api/devices/${deviceId}/sensors`);
-                    if (!response.ok) {
-                        throw new Error(`Error en la API: ${response.statusText}`);
-                    }
-
-                    const sensors = await response.json();
-
+                const sensors = await response.json();
+                console.log('Sensores recibidos:', sensors);
+                sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
+                if (sensors.length === 0) {
+                    sensorSelect.innerHTML += '<option value="" disabled>No hay sensores disponibles</option>';
+                } else {
                     sensors.forEach(sensor => {
                         const option = document.createElement('option');
                         option.value = sensor.id;
                         option.textContent = sensor.name;
                         sensorSelect.appendChild(option);
                     });
-                } catch (error) {
-                    console.error('Error al cargar sensores:', error);
-                    alert('Error al cargar sensores del dispositivo: ' + error.message);
                 }
+            } catch (error) {
+                console.error('Error al cargar sensores:', error);
+                sensorSelect.innerHTML = '<option value="" disabled selected>Error al cargar sensores</option>';
             }
+        }
+
+        function startLiveUpdates(sensorId, chartInstance) {
+            if (liveUpdateInterval) {
+                clearInterval(liveUpdateInterval);
+            }
+            liveUpdateInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    const lectura = data[0];
+                    if (lectura) {
+                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
+                        const valor = parseFloat(lectura.value);
+                        if (!chartInstance.data.labels.includes(tiempo)) {
+                            chartInstance.data.labels.push(tiempo);
+                            chartInstance.data.datasets[0].data.push(valor);
+                            if (chartInstance.data.labels.length > 100) {
+                                chartInstance.data.labels.shift();
+                                chartInstance.data.datasets[0].data.shift();
+                            }
+                            chartInstance.update();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar lecturas:', error);
+                }
+            }, 2000);
+        }
+
+        // Agregar monitores dinámicos
+        addMonitorButton.addEventListener('click', function() {
+            const monitorId = `monitor-${Date.now()}`;
+            const chartId = `chart-${Date.now()}`;
+            const monitorHTML = `
+                <div class="col-md-6 mb-3" id="${monitorId}">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>Monitor de Sensores</h5>
+                            <button class="btn btn-danger btn-sm" onclick="removeMonitor('${monitorId}')">Eliminar</button>
+                        </div>
+                        <div class="card-body">
+                            <select id="deviceSelect_${chartId}" class="form-select mb-2 device-select" aria-label="Seleccione un dispositivo">
+                                <option value="" disabled selected>Seleccione un dispositivo</option>
+                                @foreach($devices as $device)
+                                    <option value="{{ $device->id }}">{{ $device->name }}</option>
+                                @endforeach
+                            </select>
+                            <select id="sensorSelect_${chartId}" class="form-select mb-2 sensor-select" aria-label="Seleccione un sensor">
+                                <option value="" disabled selected>Seleccione un sensor</option>
+                            </select>
+                            <canvas id="sensorsChart_${chartId}" class="sensor-chart" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+            monitorsContainer.insertAdjacentHTML('beforeend', monitorHTML);
+            initializeChart(chartId);
         });
+
+        // Inicializar gráfica principal
+        initializeChart('main');
     });
 </script>
 @endpush
