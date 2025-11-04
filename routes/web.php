@@ -7,6 +7,7 @@ use App\Http\Controllers\SensorController;
 use App\Http\Controllers\AlertController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SensorTypeController;
+use App\Http\Controllers\DashboardPreferenceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,6 +22,11 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+Route::middleware('auth')->prefix('dashboard')->group(function () {
+    Route::get('preferences', [DashboardPreferenceController::class, 'show'])->name('dashboard.preferences.show');
+    Route::post('preferences', [DashboardPreferenceController::class, 'store'])->name('dashboard.preferences.store');
+});
 
 // Dispositivos
 Route::resource('devices', DeviceController::class);

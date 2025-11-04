@@ -102,36 +102,180 @@
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    
-
-    // Suscripción al canal de sensores
     const channel = pusher.subscribe('sensor');
 
     document.addEventListener('DOMContentLoaded', function () {
         const monitorsContainer = document.getElementById('monitorsContainer');
         const addMonitorButton = document.getElementById('addMonitorButton');
-
-        // Control del modo en vivo
-        let liveUpdateInterval;
         const realTimeToggle = document.getElementById('realTimeToggle');
-        realTimeToggle.addEventListener('change', function () {
-            if (!this.checked && liveUpdateInterval) {
-                clearInterval(liveUpdateInterval);
-            }
-        });
-
-        window.removeMonitor = function (monitorId) {
-            document.getElementById(monitorId)?.remove();
+        const deviceSelectMain = document.getElementById('deviceSelect_main');
+        const sensorSelectMain = document.getElementById('sensorSelect_main');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const preferencesEndpoints = {
+            load: '{{ route('dashboard.preferences.show') }}',
+            save: '{{ route('dashboard.preferences.store') }}',
         };
+
+        let dashboardState = {
+            main: {
+                device_id: null,
+                sensor_id: null,
+            },
+            monitors: [],
+        };
+        let isRestoring = false;
+        let saveTimeout;
+        const liveUpdateIntervals = new Map();
+        const chartInstances = new Map();
+
+        function getMonitorContainerId(chartId) {
+            return `monitor-${chartId}`;
+        }
+
+        function clearLiveUpdate(chartId) {
+            if (liveUpdateIntervals.has(chartId)) {
+                clearInterval(liveUpdateIntervals.get(chartId));
+                liveUpdateIntervals.delete(chartId);
+            }
+        }
+
+        function restartLiveUpdates() {
+            if (!realTimeToggle.checked) {
+                liveUpdateIntervals.forEach(intervalId => clearInterval(intervalId));
+                liveUpdateIntervals.clear();
+                return;
+            }
+
+            const mainInstance = chartInstances.get('main');
+            if (dashboardState.main.sensor_id && mainInstance) {
+                startLiveUpdates('main', dashboardState.main.sensor_id, mainInstance);
+            }
+
+            dashboardState.monitors.forEach(monitor => {
+                if (!monitor.sensor_id) {
+                    clearLiveUpdate(monitor.id);
+                    return;
+                }
+                const instance = chartInstances.get(monitor.id);
+                if (instance) {
+                    startLiveUpdates(monitor.id, monitor.sensor_id, instance);
+                }
+            });
+        }
+
+        async function persistPreferences() {
+            try {
+                await fetch(preferencesEndpoints.save, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ layout: dashboardState }),
+                });
+            } catch (error) {
+                console.error('Error al guardar preferencias:', error);
+            }
+        }
+
+        function persistPreferencesDebounced() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(persistPreferences, 400);
+        }
+
+        function updateStateForChart(chartId, partialState) {
+            if (chartId === 'main') {
+                dashboardState.main = {
+                    ...dashboardState.main,
+                    ...partialState,
+                };
+                return;
+            }
+
+            const monitor = dashboardState.monitors.find(m => m.id === chartId);
+            if (monitor) {
+                Object.assign(monitor, partialState);
+            }
+        }
+
+        async function loadSensors(deviceId, sensorSelect) {
+            sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
+
+            if (!deviceId) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/sensors`);
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                const sensors = await response.json();
+                if (sensors.length === 0) {
+                    sensorSelect.innerHTML += '<option value="" disabled>No hay sensores disponibles</option>';
+                    return;
+                }
+
+                sensors.forEach(sensor => {
+                    const option = document.createElement('option');
+                    option.value = sensor.id;
+                    option.textContent = sensor.name;
+                    sensorSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error al cargar sensores:', error);
+                sensorSelect.innerHTML = '<option value="" disabled selected>Error al cargar sensores</option>';
+            }
+        }
+
+        function startLiveUpdates(chartId, sensorId, chartInstance) {
+            clearLiveUpdate(chartId);
+
+            if (!sensorId) {
+                return;
+            }
+
+            const intervalId = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    const lectura = data[0];
+                    if (!lectura) {
+                        return;
+                    }
+
+                    const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
+                    const valor = parseFloat(lectura.value);
+                    if (!chartInstance.data.labels.includes(tiempo)) {
+                        chartInstance.data.labels.push(tiempo);
+                        chartInstance.data.datasets[0].data.push(valor);
+                        if (chartInstance.data.labels.length > 100) {
+                            chartInstance.data.labels.shift();
+                            chartInstance.data.datasets[0].data.shift();
+                        }
+                        chartInstance.update();
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar lecturas:', error);
+                }
+            }, 2000);
+
+            liveUpdateIntervals.set(chartId, intervalId);
+        }
 
         function initializeChart(chartId) {
             const deviceSelect = document.getElementById(`deviceSelect_${chartId}`);
             const sensorSelect = document.getElementById(`sensorSelect_${chartId}`);
             const canvas = document.getElementById(`sensorsChart_${chartId}`);
-            
+
             if (!deviceSelect || !sensorSelect || !canvas) {
                 console.error(`Elementos no encontrados para chartId: ${chartId}`);
-                return;
+                return null;
             }
 
             const ctx = canvas.getContext('2d');
@@ -139,6 +283,7 @@
             if (chartInstance) {
                 chartInstance.destroy();
             }
+
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -150,8 +295,8 @@
                         backgroundColor: 'rgba(33, 150, 243, 0.2)',
                         borderWidth: 2,
                         tension: 0.3,
-                        pointRadius: 0
-                    }]
+                        pointRadius: 0,
+                    }],
                 },
                 options: {
                     responsive: true,
@@ -161,24 +306,25 @@
                             display: true,
                             title: {
                                 display: true,
-                                text: 'Tiempo'
-                            }
+                                text: 'Tiempo',
+                            },
                         },
                         y: {
                             display: true,
                             title: {
                                 display: true,
-                                text: 'Valor'
-                            }
-                        }
-                    }
-                }
+                                text: 'Valor',
+                            },
+                        },
+                    },
+                },
             });
 
-            // Actualizar gráficos con Pusher
+            chartInstances.set(chartId, chartInstance);
+
             channel.bind('App\\Events\\NewSensorReading', function(data) {
                 const selectedSensorId = sensorSelect.value;
-                if (data.sensor_id == selectedSensorId) {
+                if (String(data.sensor_id) === String(selectedSensorId)) {
                     const tiempo = data.reading_time.replace('T', ' ').slice(0, 19);
                     const valor = parseFloat(data.value);
                     if (!chartInstance.data.labels.includes(tiempo)) {
@@ -195,87 +341,54 @@
 
             deviceSelect.addEventListener('change', async function () {
                 const deviceId = this.value;
-                sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
-                if (deviceId) {
-                    await loadSensors(deviceId, sensorSelect);
+                updateStateForChart(chartId, {
+                    device_id: deviceId ? Number(deviceId) : null,
+                    sensor_id: null,
+                });
+
+                clearLiveUpdate(chartId);
+                await loadSensors(deviceId, sensorSelect);
+
+                if (!isRestoring) {
+                    persistPreferencesDebounced();
                 }
             });
 
             sensorSelect.addEventListener('change', function () {
                 const sensorId = this.value;
+                updateStateForChart(chartId, {
+                    sensor_id: sensorId ? Number(sensorId) : null,
+                });
+
                 if (sensorId && realTimeToggle.checked) {
-                    startLiveUpdates(sensorId, chartInstance);
+                    startLiveUpdates(chartId, sensorId, chartInstance);
+                } else {
+                    clearLiveUpdate(chartId);
+                }
+
+                if (!isRestoring) {
+                    persistPreferencesDebounced();
                 }
             });
+
+            return chartInstance;
         }
 
-        async function loadSensors(deviceId, sensorSelect) {
-            try {
-                console.log(`Cargando sensores para deviceId: ${deviceId}`);
-                const response = await fetch(`/api/devices/${deviceId}/sensors`);
-                if (!response.ok) {
-                    throw new Error(`Error ${response.status}: ${response.statusText}`);
-                }
-                const sensors = await response.json();
-                console.log('Sensores recibidos:', sensors);
-                sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
-                if (sensors.length === 0) {
-                    sensorSelect.innerHTML += '<option value="" disabled>No hay sensores disponibles</option>';
-                } else {
-                    sensors.forEach(sensor => {
-                        const option = document.createElement('option');
-                        option.value = sensor.id;
-                        option.textContent = sensor.name;
-                        sensorSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('Error al cargar sensores:', error);
-                sensorSelect.innerHTML = '<option value="" disabled selected>Error al cargar sensores</option>';
+        async function renderMonitorFromState(monitor) {
+            const chartId = monitor.id;
+            const containerId = getMonitorContainerId(chartId);
+
+            const existing = document.getElementById(containerId);
+            if (existing) {
+                existing.remove();
             }
-        }
 
-        function startLiveUpdates(sensorId, chartInstance) {
-            if (liveUpdateInterval) {
-                clearInterval(liveUpdateInterval);
-            }
-            liveUpdateInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
-                    if (!response.ok) {
-                        throw new Error(`Error ${response.status}: ${response.statusText}`);
-                    }
-                    const data = await response.json();
-                    const lectura = data[0];
-                    if (lectura) {
-                        const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
-                        const valor = parseFloat(lectura.value);
-                        if (!chartInstance.data.labels.includes(tiempo)) {
-                            chartInstance.data.labels.push(tiempo);
-                            chartInstance.data.datasets[0].data.push(valor);
-                            if (chartInstance.data.labels.length > 100) {
-                                chartInstance.data.labels.shift();
-                                chartInstance.data.datasets[0].data.shift();
-                            }
-                            chartInstance.update();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error al actualizar lecturas:', error);
-                }
-            }, 2000);
-        }
-
-        // Agregar monitores dinámicos
-        addMonitorButton.addEventListener('click', function() {
-            const monitorId = `monitor-${Date.now()}`;
-            const chartId = `chart-${Date.now()}`;
             const monitorHTML = `
-                <div class="col-md-6 mb-3" id="${monitorId}">
+                <div class="col-md-6 mb-3" id="${containerId}">
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5>Monitor de Sensores</h5>
-                            <button class="btn btn-danger btn-sm" onclick="removeMonitor('${monitorId}')">Eliminar</button>
+                            <button class="btn btn-danger btn-sm" onclick="removeMonitor('${chartId}')">Eliminar</button>
                         </div>
                         <div class="card-body">
                             <select id="deviceSelect_${chartId}" class="form-select mb-2 device-select" aria-label="Seleccione un dispositivo">
@@ -292,12 +405,147 @@
                     </div>
                 </div>
             `;
+
             monitorsContainer.insertAdjacentHTML('beforeend', monitorHTML);
-            initializeChart(chartId);
+
+            const chartInstance = initializeChart(chartId);
+            if (!chartInstance) {
+                return;
+            }
+
+            const deviceSelect = document.getElementById(`deviceSelect_${chartId}`);
+            const sensorSelect = document.getElementById(`sensorSelect_${chartId}`);
+
+            if (monitor.device_id) {
+                deviceSelect.value = monitor.device_id;
+                await loadSensors(monitor.device_id, sensorSelect);
+            }
+
+            if (monitor.sensor_id) {
+                sensorSelect.value = monitor.sensor_id;
+                if (realTimeToggle.checked) {
+                    startLiveUpdates(chartId, monitor.sensor_id, chartInstance);
+                }
+            }
+        }
+
+        window.removeMonitor = function (chartId) {
+            const container = document.getElementById(getMonitorContainerId(chartId));
+            if (container) {
+                container.remove();
+            }
+
+            const monitorIndex = dashboardState.monitors.findIndex(m => m.id === chartId);
+            if (monitorIndex !== -1) {
+                dashboardState.monitors.splice(monitorIndex, 1);
+            }
+
+            chartInstances.delete(chartId);
+            clearLiveUpdate(chartId);
+
+            if (!isRestoring) {
+                persistPreferencesDebounced();
+            }
+        };
+
+        addMonitorButton.addEventListener('click', async function () {
+            const chartId = `chart-${Date.now()}`;
+
+            const monitorState = {
+                id: chartId,
+                device_id: null,
+                sensor_id: null,
+            };
+
+            dashboardState.monitors.push(monitorState);
+
+            await renderMonitorFromState(monitorState);
+
+            if (!isRestoring) {
+                persistPreferencesDebounced();
+            }
         });
 
-        // Inicializar gráfica principal
+        realTimeToggle.addEventListener('change', function () {
+            restartLiveUpdates();
+        });
+
+        async function loadPreferences() {
+            try {
+                const response = await fetch(preferencesEndpoints.load, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const layout = data.layout ?? {};
+
+                dashboardState = {
+                    main: {
+                        device_id: layout.main?.device_id ?? null,
+                        sensor_id: layout.main?.sensor_id ?? null,
+                    },
+                    monitors: Array.isArray(layout.monitors)
+                        ? layout.monitors
+                            .filter(monitor => monitor && monitor.id)
+                            .map(monitor => ({
+                                id: monitor.id,
+                                device_id: monitor.device_id ?? null,
+                                sensor_id: monitor.sensor_id ?? null,
+                            }))
+                        : [],
+                };
+            } catch (error) {
+                console.error('Error al cargar preferencias:', error);
+                dashboardState = {
+                    main: {
+                        device_id: null,
+                        sensor_id: null,
+                    },
+                    monitors: [],
+                };
+            }
+        }
+
+        async function applyPreferences() {
+            isRestoring = true;
+
+            try {
+                if (dashboardState.main.device_id) {
+                    deviceSelectMain.value = dashboardState.main.device_id;
+                    await loadSensors(dashboardState.main.device_id, sensorSelectMain);
+                } else {
+                    sensorSelectMain.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
+                }
+
+                if (dashboardState.main.sensor_id) {
+                    sensorSelectMain.value = dashboardState.main.sensor_id;
+                    const mainChartInstance = chartInstances.get('main');
+                    if (realTimeToggle.checked && mainChartInstance) {
+                        startLiveUpdates('main', dashboardState.main.sensor_id, mainChartInstance);
+                    }
+                }
+
+                monitorsContainer.innerHTML = '';
+                for (const monitor of dashboardState.monitors) {
+                    await renderMonitorFromState(monitor);
+                }
+            } finally {
+                isRestoring = false;
+            }
+        }
+
         initializeChart('main');
+
+        loadPreferences()
+            .then(applyPreferences)
+            .catch(error => console.error('No se pudieron aplicar las preferencias:', error));
     });
 </script>
 @endpush

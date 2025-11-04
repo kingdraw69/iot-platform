@@ -228,7 +228,7 @@ public function getByDevice($deviceId)
     try {
         $sensors = Sensor::where('device_id', $deviceId)->get();
         return response()->json($sensors);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return response()->json(['error' => 'Error al obtener sensores: ' . $e->getMessage()], 500);
     }
 }
