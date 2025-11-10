@@ -49,4 +49,19 @@ class DashboardController extends Controller
 
         return response()->json($readings);
     }
+
+    public function getActiveAlerts()
+    {
+        $activeAlerts = Alert::where('resolved', false)->count();
+        $activeAlertsList = Alert::with(['sensorReading.sensor.sensorType', 'sensorReading.sensor.device.classroom', 'alertRule'])
+            ->where('resolved', false)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'count' => $activeAlerts,
+            'alerts' => $activeAlertsList
+        ]);
+    }
 }

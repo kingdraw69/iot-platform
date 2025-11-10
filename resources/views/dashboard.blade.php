@@ -66,28 +66,33 @@
     </div>
     <div class="col-md-4">
         <div class="card">
-            <div class="card-header">
-                <h5>Últimas Alertas</h5>
+            <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#alertsCollapse" aria-expanded="true" aria-controls="alertsCollapse" style="cursor: pointer;">
+                <h5 id="alertsHeader" class="mb-0">Últimas Alertas ({{ $activeAlerts }})</h5>
+                <i class="fas fa-chevron-down" id="alertsChevron"></i>
             </div>
-            <div class="card-body">
-                @if(isset($activeAlertsList) && !$activeAlertsList->isEmpty())
-                    <div class="list-group">
-                        @foreach($activeAlertsList as $alert)
-                            <a href="#" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
-                                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
-                                </div>
-                                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
-                                <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
-                            </a>
-                        @endforeach
+            <div id="alertsCollapse" class="collapse show">
+                <div class="card-body">
+                    <div id="alertsList">
+                        @if(isset($activeAlertsList) && !$activeAlertsList->isEmpty())
+                            <div class="list-group">
+                                @foreach($activeAlertsList as $alert)
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
+                                            <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
+                                        </div>
+                                        <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
+                                        <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="alert alert-info mb-0">
+                                No hay alertas recientes disponibles.
+                            </div>
+                        @endif
                     </div>
-                @else
-                    <div class="alert alert-info mb-0">
-                        No hay alertas recientes disponibles.
-                    </div>
-                @endif
+                </div>
             </div>
         </div>
     </div>
@@ -150,6 +155,7 @@
         const liveUpdateIntervals = new Map();
         const chartInstances = new Map();
         const sensorChannelSubscriptions = new Map();
+        let alertsChannel = null;
 
         function getMonitorContainerId(chartId) {
             return `monitor-${chartId}`;
@@ -187,6 +193,84 @@
 
         function formatTimestamp(timestamp) {
             return timestamp ? timestamp.replace('T', ' ').slice(0, 19) : '';
+        }
+
+        function updateAlertsUI(data) {
+            const alertsHeader = document.getElementById('alertsHeader');
+            const alertsList = document.getElementById('alertsList');
+
+            if (alertsHeader) {
+                alertsHeader.textContent = `Últimas Alertas (${data.count})`;
+            }
+
+            if (alertsList && data.alerts) {
+                if (data.alerts.length > 0) {
+                    const alertsHtml = `
+                        <div class="list-group">
+                            ${data.alerts.map(alert => `
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">Sensor: ${alert.sensor_reading.sensor.name}</h6>
+                                        <small>${new Date(alert.created_at).toLocaleString()}</small>
+                                    </div>
+                                    <p class="mb-1">Mensaje: ${alert.alert_rule.message}</p>
+                                    <small>Valor detectado: ${alert.sensor_reading.value} ${alert.sensor_reading.sensor.sensor_type.unit}</small>
+                                </a>
+                            `).join('')}
+                        </div>
+                    `;
+                    alertsList.innerHTML = alertsHtml;
+                } else {
+                    alertsList.innerHTML = `
+                        <div class="alert alert-info mb-0">
+                            No hay alertas recientes disponibles.
+                        </div>
+                    `;
+                }
+            }
+
+            // Update the summary card count as well
+            const summaryAlertsCard = document.querySelector('.card-danger .display-4');
+            if (summaryAlertsCard) {
+                summaryAlertsCard.textContent = data.count;
+            }
+        }
+
+        function loadActiveAlerts() {
+            fetch('/api/alerts/active')
+                .then(response => response.json())
+                .then(data => updateAlertsUI(data))
+                .catch(error => console.error('Error loading active alerts:', error));
+        }
+
+        function subscribeToAlertsChannel() {
+            if (!window.pusher) {
+                console.error('Pusher not available');
+                return;
+            }
+
+            alertsChannel = pusher.subscribe('alerts');
+            alertsChannel.bind('App\\Events\\NewAlertTriggered', function(data) {
+                console.log('New alert triggered:', data);
+                loadActiveAlerts();
+            });
+        }
+
+        function toggleAlertsChevron() {
+            const alertsCollapse = document.getElementById('alertsCollapse');
+            const chevron = document.getElementById('alertsChevron');
+
+            if (alertsCollapse && chevron) {
+                alertsCollapse.addEventListener('show.bs.collapse', function () {
+                    chevron.classList.remove('fa-chevron-down');
+                    chevron.classList.add('fa-chevron-up');
+                });
+
+                alertsCollapse.addEventListener('hide.bs.collapse', function () {
+                    chevron.classList.remove('fa-chevron-up');
+                    chevron.classList.add('fa-chevron-down');
+                });
+            }
         }
 
         function pushDataPoint(chartInstance, timestamp, value) {
@@ -654,6 +738,10 @@
 
         loadPreferences()
             .then(applyPreferences)
+            .then(() => {
+                subscribeToAlertsChannel();
+                toggleAlertsChevron();
+            })
             .catch(error => console.error('No se pudieron aplicar las preferencias:', error));
     });
 </script>

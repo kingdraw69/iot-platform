@@ -34,6 +34,7 @@ Route::post('/sensors/{sensor}/readings', [SensorDataController::class, 'store']
 Route::get('/devices/{device}/sensors', [DashboardController::class, 'getSensors']);
 Route::get('/sensors/{sensor}/readings', [DashboardController::class, 'getSensorReadings']);
 Route::get('/sensors/all/readings', [SensorController::class, 'getLatestReadings']);
+Route::get('/alerts/active', [DashboardController::class, 'getActiveAlerts']);
 
 // Ruta para reglas de alerta
 Route::prefix('alert-rules')->group(function () {
