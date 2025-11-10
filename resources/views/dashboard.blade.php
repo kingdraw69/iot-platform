@@ -70,19 +70,17 @@
                 <h5>Últimas Alertas</h5>
             </div>
             <div class="card-body">
-                @if(isset($latestReadings) && !$latestReadings->isEmpty())
+                @if(isset($activeAlertsList) && !$activeAlertsList->isEmpty())
                     <div class="list-group">
-                        @foreach($latestReadings as $reading)
-                            @foreach($reading->alerts as $alert)
-                                <a href="#" class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">Sensor: {{ $reading->sensor->name }}</h6>
-                                        <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
-                                    </div>
-                                    <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
-                                    <small>Valor detectado: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</small>
-                                </a>
-                            @endforeach
+                        @foreach($activeAlertsList as $alert)
+                            <a href="#" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
+                                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
+                                </div>
+                                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
+                                <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
+                            </a>
                         @endforeach
                     </div>
                 @else
