@@ -12,6 +12,7 @@ class Sensor extends Model
         'name',
         'device_id',
         'sensor_type_id',
+        'status',
     ];
 
     // Relación con el dispositivo
@@ -30,5 +31,10 @@ class Sensor extends Model
     public function readings()
     {
         return $this->hasMany(SensorReading::class);
+    }
+
+    public function alertRules()
+    {
+        return $this->hasMany(AlertRule::class);
     }
 }

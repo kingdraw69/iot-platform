@@ -11,7 +11,12 @@ class Device extends Model
 
     protected $fillable = [
         'name', 'serial_number', 'device_type_id', 'classroom_id', 
-        'status', 'ip_address', 'mac_address', 'last_communication'
+        'status', 'is_active', 'ip_address', 'mac_address', 'last_communication'
+    ];
+
+    protected $attributes = [
+        'status' => true,
+        'is_active' => true
     ];
 
     protected $casts = [

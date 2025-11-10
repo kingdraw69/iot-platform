@@ -127,9 +127,11 @@
                                 <div class="d-flex align-items-center">
                                     <form action="{{ route('devices.toggle-status', $device) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-{{ $device->status ? 'success' : 'secondary' }}"
-                                                title="{{ $device->status ? 'Activo' : 'Inactivo' }}">
-                                            <i class="fas fa-power-off"></i>
+                                        <button type="submit" 
+                                            class="btn btn-sm btn-{{ $device->status ? 'success' : 'secondary' }} d-flex align-items-center"
+                                            title="{{ $device->status ? 'Activo - Click para desactivar' : 'Inactivo - Click para activar' }}">
+                                            <i class="fas fa-power-off me-2"></i>
+                                            <span>{{ $device->status ? 'Activo' : 'Inactivo' }}</span>
                                         </button>
                                     </form>
                                 </div>

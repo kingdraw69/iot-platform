@@ -10,28 +10,27 @@ class SensorReadingObserver
 {
     public function created(SensorReading $sensorReading)
     {
-        $alertRules = $sensorReading->sensor->sensorType->alertRules;
+        $triggeredRules = $sensorReading->checkForAlert();
 
-        foreach ($alertRules as $rule) {
-            if ($sensorReading->value < $rule->min_value || $sensorReading->value > $rule->max_value) {
-                $alertDetails = [
-                    'device' => $sensorReading->sensor->device->name,
-                    'location' => $sensorReading->sensor->device->location,
-                    'sensor' => $sensorReading->sensor->name,
-                    'message' => $rule->message,
-                    'value' => $sensorReading->value,
-                ];
+        if ($triggeredRules->isEmpty()) {
+            return;
+        }
 
-                Alert::sendDangerAlertEmail($alertDetails);
+        foreach ($triggeredRules as $rule) {
+            $device = $sensorReading->sensor->device;
+            $location = $device && $device->classroom ? $device->classroom->name : 'Ubicación desconocida';
 
-                Alert::create([
-                    'sensor_reading_id' => $sensorReading->id,
-                    'alert_rule_id' => $rule->id,
-                    'resolved' => false,
-                ]);
+            $alertDetails = [
+                'device' => $device?->name ?? 'Dispositivo desconocido',
+                'location' => $location,
+                'sensor' => $sensorReading->sensor->name,
+                'alert_message' => $rule->message,
+                'value' => $sensorReading->value,
+            ];
 
-                Log::info('Alerta activada para la lectura del sensor: ' . $sensorReading->id);
-            }
+            Alert::sendDangerAlertEmail($alertDetails);
+
+            Log::info('Alerta activada para la lectura del sensor: ' . $sensorReading->id);
         }
     }
 }

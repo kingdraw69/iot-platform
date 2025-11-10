@@ -19,16 +19,18 @@ class SensorReadingAlertTest extends TestCase
         // Crear un tipo de sensor
         $sensorType = SensorType::factory()->create();
 
-        // Crear una regla de alerta para el tipo de sensor
-        $alertRule = AlertRule::factory()->create([
-            'sensor_type_id' => $sensorType->id,
-            'min_value' => -10,
-            'max_value' => 45,
-        ]);
-
         // Crear un sensor asociado al tipo de sensor
         $sensor = Sensor::factory()->create([
             'sensor_type_id' => $sensorType->id,
+        ]);
+
+        // Crear una regla de alerta para el sensor
+        $alertRule = AlertRule::factory()->create([
+            'sensor_type_id' => $sensorType->id,
+            'device_id' => $sensor->device_id,
+            'sensor_id' => $sensor->id,
+            'min_value' => -10,
+            'max_value' => 45,
         ]);
 
         // Crear una lectura que exceda el umbral
@@ -53,16 +55,18 @@ class SensorReadingAlertTest extends TestCase
         // Crear un tipo de sensor
         $sensorType = SensorType::factory()->create();
 
-        // Crear una regla de alerta para el tipo de sensor
-        $alertRule = AlertRule::factory()->create([
-            'sensor_type_id' => $sensorType->id,
-            'min_value' => -10,
-            'max_value' => 45,
-        ]);
-
         // Crear un sensor asociado al tipo de sensor
         $sensor = Sensor::factory()->create([
             'sensor_type_id' => $sensorType->id,
+        ]);
+
+        // Crear una regla de alerta para el sensor
+        $alertRule = AlertRule::factory()->create([
+            'sensor_type_id' => $sensorType->id,
+            'device_id' => $sensor->device_id,
+            'sensor_id' => $sensor->id,
+            'min_value' => -10,
+            'max_value' => 45,
         ]);
 
         // Crear una lectura dentro del umbral

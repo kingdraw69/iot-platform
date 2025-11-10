@@ -70,20 +70,26 @@
                 <h5>Últimas Alertas</h5>
             </div>
             <div class="card-body">
-                <div class="list-group">
-                    @foreach($latestReadings as $reading)
-                        @foreach($reading->alerts as $alert)
-                            <a href="#" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">Sensor: {{ $reading->sensor->name }}</h6>
-                                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
-                                </div>
-                                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
-                                <small>Valor detectado: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</small>
-                            </a>
+                @if(isset($latestReadings) && !$latestReadings->isEmpty())
+                    <div class="list-group">
+                        @foreach($latestReadings as $reading)
+                            @foreach($reading->alerts as $alert)
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">Sensor: {{ $reading->sensor->name }}</h6>
+                                        <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
+                                    </div>
+                                    <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
+                                    <small>Valor detectado: {{ $reading->value }} {{ $reading->sensor->sensorType->unit }}</small>
+                                </a>
+                            @endforeach
                         @endforeach
-                    @endforeach
-                </div>
+                    </div>
+                @else
+                    <div class="alert alert-info mb-0">
+                        No hay alertas recientes disponibles.
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -102,34 +108,75 @@
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const channel = pusher.subscribe('sensor');
-
     document.addEventListener('DOMContentLoaded', function () {
+        const MAX_POINTS = 10;
         const monitorsContainer = document.getElementById('monitorsContainer');
         const addMonitorButton = document.getElementById('addMonitorButton');
         const realTimeToggle = document.getElementById('realTimeToggle');
         const deviceSelectMain = document.getElementById('deviceSelect_main');
         const sensorSelectMain = document.getElementById('sensorSelect_main');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : null;
         const preferencesEndpoints = {
             load: '{{ route('dashboard.preferences.show') }}',
             save: '{{ route('dashboard.preferences.store') }}',
         };
 
+        // Null checks for critical elements
+        if (!monitorsContainer) {
+            console.error('monitorsContainer not found');
+            return;
+        }
+        if (!addMonitorButton) {
+            console.error('addMonitorButton not found');
+            return;
+        }
+        if (!realTimeToggle) {
+            console.error('realTimeToggle not found');
+            return;
+        }
+        if (!deviceSelectMain) {
+            console.error('deviceSelect_main not found');
+            return;
+        }
+        if (!sensorSelectMain) {
+            console.error('sensorSelect_main not found');
+            return;
+        }
+
         let dashboardState = {
-            main: {
-                device_id: null,
-                sensor_id: null,
-            },
+            main: { device_id: null, sensor_id: null },
             monitors: [],
         };
         let isRestoring = false;
         let saveTimeout;
         const liveUpdateIntervals = new Map();
         const chartInstances = new Map();
+        const sensorChannelSubscriptions = new Map();
 
         function getMonitorContainerId(chartId) {
             return `monitor-${chartId}`;
+        }
+
+        function unsubscribeFromSensorChannel(chartId) {
+            const subscription = sensorChannelSubscriptions.get(chartId);
+            if (!subscription || !window.pusher) {
+                return;
+            }
+
+            const { channelName, handler } = subscription;
+            const channel = pusher.channel(channelName);
+            if (channel) {
+                channel.unbind('App\\Events\\NewSensorReading', handler);
+
+                const stillUsed = Array.from(sensorChannelSubscriptions.entries())
+                    .some(([key, sub]) => key !== chartId && sub.channelName === channelName);
+
+                if (!stillUsed) {
+                    pusher.unsubscribe(channelName);
+                }
+            }
+
+            sensorChannelSubscriptions.delete(chartId);
         }
 
         function clearLiveUpdate(chartId) {
@@ -137,18 +184,77 @@
                 clearInterval(liveUpdateIntervals.get(chartId));
                 liveUpdateIntervals.delete(chartId);
             }
+            unsubscribeFromSensorChannel(chartId);
+        }
+
+        function formatTimestamp(timestamp) {
+            return timestamp ? timestamp.replace('T', ' ').slice(0, 19) : '';
+        }
+
+        function pushDataPoint(chartInstance, timestamp, value) {
+            if (!chartInstance || !timestamp || Number.isNaN(value)) {
+                return;
+            }
+
+            const labels = chartInstance.data.labels;
+            const dataset = chartInstance.data.datasets[0].data;
+            const existingIndex = labels.indexOf(timestamp);
+
+            if (existingIndex !== -1) {
+                dataset[existingIndex] = value;
+            } else {
+                labels.push(timestamp);
+                dataset.push(value);
+                if (labels.length > MAX_POINTS) {
+                    labels.shift();
+                    dataset.shift();
+                }
+            }
+
+            chartInstance.update();
+        }
+
+        function buildReadingsUrl(sensorId, limit = MAX_POINTS, sort = null) {
+            const params = new URLSearchParams({ limit });
+            if (sort) {
+                params.append('sort', sort);
+            }
+            return `/api/sensors/${sensorId}/readings?${params.toString()}`;
+        }
+
+        function subscribeToSensorChannel(chartId, sensorId, chartInstance) {
+            unsubscribeFromSensorChannel(chartId);
+
+            if (!sensorId || !window.pusher || !realTimeToggle.checked) {
+                return;
+            }
+
+            const channelName = `sensor.${sensorId}`;
+            const channel = pusher.channel(channelName) ?? pusher.subscribe(channelName);
+
+            const handler = function (data) {
+                if (!data || Number(data.sensor_id) !== Number(sensorId)) {
+                    return;
+                }
+                pushDataPoint(chartInstance, formatTimestamp(data.reading_time), parseFloat(data.value));
+            };
+
+            channel.bind('App\\Events\\NewSensorReading', handler);
+            sensorChannelSubscriptions.set(chartId, { channelName, handler });
         }
 
         function restartLiveUpdates() {
             if (!realTimeToggle.checked) {
                 liveUpdateIntervals.forEach(intervalId => clearInterval(intervalId));
                 liveUpdateIntervals.clear();
+                sensorChannelSubscriptions.forEach((_, chartId) => unsubscribeFromSensorChannel(chartId));
                 return;
             }
 
             const mainInstance = chartInstances.get('main');
             if (dashboardState.main.sensor_id && mainInstance) {
                 startLiveUpdates('main', dashboardState.main.sensor_id, mainInstance);
+                subscribeToSensorChannel('main', dashboardState.main.sensor_id, mainInstance);
             }
 
             dashboardState.monitors.forEach(monitor => {
@@ -159,11 +265,16 @@
                 const instance = chartInstances.get(monitor.id);
                 if (instance) {
                     startLiveUpdates(monitor.id, monitor.sensor_id, instance);
+                    subscribeToSensorChannel(monitor.id, monitor.sensor_id, instance);
                 }
             });
         }
 
         async function persistPreferences() {
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                return;
+            }
             try {
                 await fetch(preferencesEndpoints.save, {
                     method: 'POST',
@@ -187,10 +298,7 @@
 
         function updateStateForChart(chartId, partialState) {
             if (chartId === 'main') {
-                dashboardState.main = {
-                    ...dashboardState.main,
-                    ...partialState,
-                };
+                dashboardState.main = { ...dashboardState.main, ...partialState };
                 return;
             }
 
@@ -213,6 +321,7 @@
                     throw new Error(`Error ${response.status}: ${response.statusText}`);
                 }
                 const sensors = await response.json();
+
                 if (sensors.length === 0) {
                     sensorSelect.innerHTML += '<option value="" disabled>No hay sensores disponibles</option>';
                     return;
@@ -230,6 +339,33 @@
             }
         }
 
+        async function loadHistoricalData(sensorId, chartInstance) {
+            if (!sensorId || !chartInstance) {
+                return;
+            }
+
+            try {
+                const response = await fetch(buildReadingsUrl(sensorId, MAX_POINTS, 'desc'));
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                let rawData = await response.json();
+
+                // Reverse to get chronological order (oldest first) since backend returns desc
+                rawData = rawData.reverse();
+
+                const labels = rawData.map(lectura => formatTimestamp(lectura.reading_time));
+                const values = rawData.map(lectura => parseFloat(lectura.value));
+
+                chartInstance.data.labels = labels;
+                chartInstance.data.datasets[0].data = values;
+                chartInstance.update('none');
+            } catch (error) {
+                console.error('Error al cargar datos históricos:', error);
+            }
+        }
+
         function startLiveUpdates(chartId, sensorId, chartInstance) {
             clearLiveUpdate(chartId);
 
@@ -239,7 +375,7 @@
 
             const intervalId = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/sensors/${sensorId}/readings?limit=1`);
+                    const response = await fetch(buildReadingsUrl(sensorId, 1));
                     if (!response.ok) {
                         throw new Error(`Error ${response.status}: ${response.statusText}`);
                     }
@@ -249,17 +385,7 @@
                         return;
                     }
 
-                    const tiempo = lectura.reading_time.replace('T', ' ').slice(0, 19);
-                    const valor = parseFloat(lectura.value);
-                    if (!chartInstance.data.labels.includes(tiempo)) {
-                        chartInstance.data.labels.push(tiempo);
-                        chartInstance.data.datasets[0].data.push(valor);
-                        if (chartInstance.data.labels.length > 100) {
-                            chartInstance.data.labels.shift();
-                            chartInstance.data.datasets[0].data.shift();
-                        }
-                        chartInstance.update();
-                    }
+                    pushDataPoint(chartInstance, formatTimestamp(lectura.reading_time), parseFloat(lectura.value));
                 } catch (error) {
                     console.error('Error al actualizar lecturas:', error);
                 }
@@ -291,11 +417,12 @@
                     datasets: [{
                         label: 'Lectura del sensor',
                         data: [],
-                        borderColor: '#2196F3',
-                        backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
                         borderWidth: 2,
                         tension: 0.3,
-                        pointRadius: 0,
+                        pointRadius: 2,
+                        pointBackgroundColor: '#2563eb',
                     }],
                 },
                 options: {
@@ -304,40 +431,17 @@
                     scales: {
                         x: {
                             display: true,
-                            title: {
-                                display: true,
-                                text: 'Tiempo',
-                            },
+                            title: { display: true, text: 'Tiempo' },
                         },
                         y: {
                             display: true,
-                            title: {
-                                display: true,
-                                text: 'Valor',
-                            },
+                            title: { display: true, text: 'Valor' },
                         },
                     },
                 },
             });
 
             chartInstances.set(chartId, chartInstance);
-
-            channel.bind('App\\Events\\NewSensorReading', function(data) {
-                const selectedSensorId = sensorSelect.value;
-                if (String(data.sensor_id) === String(selectedSensorId)) {
-                    const tiempo = data.reading_time.replace('T', ' ').slice(0, 19);
-                    const valor = parseFloat(data.value);
-                    if (!chartInstance.data.labels.includes(tiempo)) {
-                        chartInstance.data.labels.push(tiempo);
-                        chartInstance.data.datasets[0].data.push(valor);
-                        if (chartInstance.data.labels.length > 100) {
-                            chartInstance.data.labels.shift();
-                            chartInstance.data.datasets[0].data.shift();
-                        }
-                        chartInstance.update();
-                    }
-                }
-            });
 
             deviceSelect.addEventListener('change', async function () {
                 const deviceId = this.value;
@@ -347,6 +451,7 @@
                 });
 
                 clearLiveUpdate(chartId);
+                sensorSelect.innerHTML = '<option value="" disabled selected>Seleccione un sensor</option>';
                 await loadSensors(deviceId, sensorSelect);
 
                 if (!isRestoring) {
@@ -354,16 +459,24 @@
                 }
             });
 
-            sensorSelect.addEventListener('change', function () {
+            sensorSelect.addEventListener('change', async function () {
                 const sensorId = this.value;
                 updateStateForChart(chartId, {
                     sensor_id: sensorId ? Number(sensorId) : null,
                 });
 
-                if (sensorId && realTimeToggle.checked) {
-                    startLiveUpdates(chartId, sensorId, chartInstance);
-                } else {
-                    clearLiveUpdate(chartId);
+                clearLiveUpdate(chartId);
+
+                if (sensorId) {
+                    await loadHistoricalData(sensorId, chartInstance);
+                    if (realTimeToggle.checked) {
+                        startLiveUpdates(chartId, sensorId, chartInstance);
+                        subscribeToSensorChannel(chartId, sensorId, chartInstance);
+                    }
+                }
+
+                if (!sensorId) {
+                    unsubscribeFromSensorChannel(chartId);
                 }
 
                 if (!isRestoring) {
@@ -378,10 +491,7 @@
             const chartId = monitor.id;
             const containerId = getMonitorContainerId(chartId);
 
-            const existing = document.getElementById(containerId);
-            if (existing) {
-                existing.remove();
-            }
+            document.getElementById(containerId)?.remove();
 
             const monitorHTML = `
                 <div class="col-md-6 mb-3" id="${containerId}">
@@ -416,15 +526,17 @@
             const deviceSelect = document.getElementById(`deviceSelect_${chartId}`);
             const sensorSelect = document.getElementById(`sensorSelect_${chartId}`);
 
-            if (monitor.device_id) {
+            if (monitor.device_id && deviceSelect) {
                 deviceSelect.value = monitor.device_id;
                 await loadSensors(monitor.device_id, sensorSelect);
             }
 
-            if (monitor.sensor_id) {
+            if (monitor.sensor_id && sensorSelect) {
                 sensorSelect.value = monitor.sensor_id;
+                await loadHistoricalData(monitor.sensor_id, chartInstance);
                 if (realTimeToggle.checked) {
                     startLiveUpdates(chartId, monitor.sensor_id, chartInstance);
+                    subscribeToSensorChannel(chartId, monitor.sensor_id, chartInstance);
                 }
             }
         }
@@ -448,27 +560,25 @@
             }
         };
 
-        addMonitorButton.addEventListener('click', async function () {
-            const chartId = `chart-${Date.now()}`;
+        if (addMonitorButton) {
+            addMonitorButton.addEventListener('click', async function () {
+                const chartId = `chart-${Date.now()}`;
+                const monitorState = { id: chartId, device_id: null, sensor_id: null };
+                dashboardState.monitors.push(monitorState);
 
-            const monitorState = {
-                id: chartId,
-                device_id: null,
-                sensor_id: null,
-            };
+                await renderMonitorFromState(monitorState);
 
-            dashboardState.monitors.push(monitorState);
+                if (!isRestoring) {
+                    persistPreferencesDebounced();
+                }
+            });
+        }
 
-            await renderMonitorFromState(monitorState);
-
-            if (!isRestoring) {
-                persistPreferencesDebounced();
-            }
-        });
-
-        realTimeToggle.addEventListener('change', function () {
-            restartLiveUpdates();
-        });
+        if (realTimeToggle) {
+            realTimeToggle.addEventListener('change', function () {
+                restartLiveUpdates();
+            });
+        }
 
         async function loadPreferences() {
             try {
@@ -504,10 +614,7 @@
             } catch (error) {
                 console.error('Error al cargar preferencias:', error);
                 dashboardState = {
-                    main: {
-                        device_id: null,
-                        sensor_id: null,
-                    },
+                    main: { device_id: null, sensor_id: null },
                     monitors: [],
                 };
             }
@@ -526,9 +633,13 @@
 
                 if (dashboardState.main.sensor_id) {
                     sensorSelectMain.value = dashboardState.main.sensor_id;
-                    const mainChartInstance = chartInstances.get('main');
-                    if (realTimeToggle.checked && mainChartInstance) {
-                        startLiveUpdates('main', dashboardState.main.sensor_id, mainChartInstance);
+                    await loadHistoricalData(dashboardState.main.sensor_id, chartInstances.get('main'));
+                    if (realTimeToggle.checked) {
+                        const mainInstance = chartInstances.get('main');
+                        if (mainInstance) {
+                            startLiveUpdates('main', dashboardState.main.sensor_id, mainInstance);
+                            subscribeToSensorChannel('main', dashboardState.main.sensor_id, mainInstance);
+                        }
                     }
                 }
 

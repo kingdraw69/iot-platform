@@ -21,6 +21,7 @@
                 <thead>
                     <tr>
                         <th>Dispositivo</th>
+                        <th>Sensor</th>
                         <th>Tipo de Sensor</th>
                         <th>Valor Mínimo</th>
                         <th>Valor Máximo</th>
@@ -31,7 +32,8 @@
                 <tbody>
                     @foreach($alertRules as $rule)
                         <tr>
-                            <td>{{ $rule->device->name }}</td>
+                            <td>{{ optional($rule->device)->name ?? 'N/D' }}</td>
+                            <td>{{ optional($rule->sensor)->name ?? 'N/D' }}</td>
                             <td>{{ $rule->sensorType->name }}</td>
                             <td>{{ $rule->min_value }}</td>
                             <td>{{ $rule->max_value }}</td>

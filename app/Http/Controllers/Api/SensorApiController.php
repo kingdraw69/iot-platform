@@ -32,6 +32,9 @@ class SensorApiController extends Controller
                 'reading_time' => $validated['reading_time'] ?? now()
             ]);
 
+            // Evaluar reglas de alerta inmediatamente
+            $reading->checkForAlert();
+
             // Disparar evento para actualización en tiempo real
             event(new NewSensorReading($reading));
 
@@ -47,6 +50,16 @@ class SensorApiController extends Controller
                 'details' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Alias requerido por la ruta POST /api/sensors/{sensor}/readings.
+     * Laravel estaba intentando invocar storeReading (inexistente) y la petición fallaba,
+     * evitando que se creen lecturas y, por lo tanto, alertas.
+     */
+    public function storeReading(Request $request, Sensor $sensor)
+    {
+        return $this->store($request, $sensor);
     }
     public function readings(Sensor $sensor)
     {
@@ -65,6 +78,34 @@ class SensorApiController extends Controller
             Log::error("Error fetching sensor readings: " . $e->getMessage());
             return response()->json([
                 'error' => 'Error retrieving readings',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function latestReadings(Request $request, Sensor $sensor)
+    {
+        try {
+            $limit = (int) $request->query('limit', 10);
+            $limit = max(1, min($limit, 100));
+
+            $readings = $sensor->readings()
+                ->orderBy('reading_time', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(fn ($reading) => [
+                    'id' => $reading->id,
+                    'value' => (float) $reading->value,
+                    'reading_time' => $reading->reading_time?->toIso8601String(),
+                    'created_at' => $reading->created_at?->toIso8601String(),
+                ])
+                ->values();
+
+            return response()->json($readings);
+        } catch (\Exception $e) {
+            Log::error("Error fetching latest sensor readings: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Error retrieving latest readings',
                 'details' => $e->getMessage()
             ], 500);
         }
@@ -143,4 +184,3 @@ class SensorApiController extends Controller
         }
     }
 }
-

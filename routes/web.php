@@ -28,19 +28,22 @@ Route::middleware('auth')->prefix('dashboard')->group(function () {
     Route::post('preferences', [DashboardPreferenceController::class, 'store'])->name('dashboard.preferences.store');
 });
 
-// Dispositivos
-Route::resource('devices', DeviceController::class);
-Route::post('devices/{device}/toggle-status', [DeviceController::class, 'toggleStatus'])->name('devices.toggle-status');
-Route::post('/devices/{device}/register-communication', [DeviceController::class, 'registerCommunication'])->name('devices.register-communication');
+Route::middleware('auth')->group(function () {
+    // Dispositivos
+    Route::resource('devices', DeviceController::class);
+    Route::post('devices/{device}/toggle-status', [DeviceController::class, 'toggleStatus'])->name('devices.toggle-status');
+    Route::post('/devices/{device}/register-communication', [DeviceController::class, 'registerCommunication'])->name('devices.register-communication');
 
-// Sensores
-Route::resource('sensors', SensorController::class);
-Route::get('sensors/{sensor}/edit', [SensorController::class, 'edit'])->name('sensors.edit');
+    // Sensores
+    Route::resource('sensors', SensorController::class);
+    Route::get('sensors/{sensor}/edit', [SensorController::class, 'edit'])->name('sensors.edit');
 
-// Alertas
-Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
-Route::get('alerts/unresolved', [AlertController::class, 'unresolved'])->name('alerts.unresolved');
-Route::put('alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
+    // Alertas
+    Route::post('alerts/mark-all-resolved', [AlertController::class, 'markAllAsResolved'])->name('alerts.mark-all-resolved');
+    Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::get('alerts/unresolved', [AlertController::class, 'unresolved'])->name('alerts.unresolved');
+    Route::put('alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve');
+});
 
 
 Route::get('sensors/{sensor}/download', [SensorController::class, 'downloadReadings'])

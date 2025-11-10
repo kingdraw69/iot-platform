@@ -36,14 +36,20 @@
 
                 <div class="form-group">
                     <label for="min_value">Valor Mínimo</label>
-                    <input type="number" step="0.01" class="form-control" id="min_value" name="min_value" required>
-                    <small class="form-text text-muted">Rango válido: <span id="min_range"></span></small>
+                    <input type="number" step="0.01" class="form-control" id="min_value" name="min_value">
+                    <small class="form-text text-muted">
+                        Opcional. Se dispara cuando la lectura es menor a este valor.
+                        Rango válido: <span id="min_range"></span>
+                    </small>
                 </div>
 
                 <div class="form-group">
                     <label for="max_value">Valor Máximo</label>
-                    <input type="number" step="0.01" class="form-control" id="max_value" name="max_value" required>
-                    <small class="form-text text-muted">Rango válido: <span id="max_range"></span></small>
+                    <input type="number" step="0.01" class="form-control" id="max_value" name="max_value">
+                    <small class="form-text text-muted">
+                        Opcional. Se dispara cuando la lectura supera este valor.
+                        Rango válido: <span id="max_range"></span>
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -94,6 +100,8 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th>Dispositivo</th>
+                            <th>Sensor</th>
                             <th>Tipo de Sensor</th>
                             <th>Rango</th>
                             <th>Severidad</th>
@@ -104,8 +112,14 @@
                     <tbody>
                         @foreach($alertRules as $rule)
                         <tr>
+                            <td>{{ optional($rule->device)->name ?? 'N/D' }}</td>
+                            <td>{{ optional($rule->sensor)->name ?? 'N/D' }}</td>
                             <td>{{ $rule->sensorType->name }}</td>
-                            <td>{{ $rule->min_value }} - {{ $rule->max_value }} {{ $rule->sensorType->unit }}</td>
+                            @php
+                                $minText = is_null($rule->min_value) ? '—' : $rule->min_value;
+                                $maxText = is_null($rule->max_value) ? '—' : $rule->max_value;
+                            @endphp
+                            <td>{{ $minText }} - {{ $maxText }} {{ $rule->sensorType->unit }}</td>
                             <td>
                                 <span class="badge badge-{{ $rule->severity }}">
                                     {{ ucfirst($rule->severity) }}

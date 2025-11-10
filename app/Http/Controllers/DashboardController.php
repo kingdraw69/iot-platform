@@ -15,8 +15,10 @@ class DashboardController extends Controller
         $totalDevices = Device::count();
         $activeDevices = Device::where('status', true)->count();
         $activeAlerts = Alert::where('resolved', false)->count(); // Contar alertas activas
-        $latestReadings = SensorReading::with(['sensor.sensorType', 'sensor.device.classroom', 'alerts'])
-            ->orderBy('reading_time', 'desc')
+
+        $activeAlertsList = Alert::with(['sensorReading.sensor.sensorType', 'sensorReading.sensor.device.classroom', 'alertRule'])
+            ->where('resolved', false)
+            ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
@@ -24,7 +26,15 @@ class DashboardController extends Controller
         $sensorTypes = SensorType::all();
         $sensors = \App\Models\Sensor::with('sensorType')->get();
 
-        return view('dashboard', compact('totalDevices', 'activeDevices', 'activeAlerts', 'latestReadings', 'devices', 'sensorTypes', 'sensors'));
+        return view('dashboard', compact(
+            'totalDevices',
+            'activeDevices',
+            'activeAlerts',
+            'activeAlertsList',
+            'devices',
+            'sensorTypes',
+            'sensors'
+        ));
     }
     
     public function getSensors(Device $device)

@@ -114,7 +114,10 @@ class DeviceController extends Controller
     {
         try {
             $newStatus = !$device->status;
-            $device->update(['status' => $newStatus]);
+            $device->update([
+                'status' => $newStatus,
+                'is_active' => $newStatus
+            ]);
             
             // Registrar el cambio de estado
             $device->statusLogs()->create([
@@ -122,7 +125,8 @@ class DeviceController extends Controller
                 'changed_at' => now(),
             ]);
             
-            return back()->with('success', 'Estado del dispositivo actualizado');
+            $statusText = $newStatus ? 'activado' : 'desactivado';
+            return back()->with('success', "Dispositivo {$statusText} correctamente");
         } catch (\Exception $e) {
             Log::error('Error al cambiar estado del dispositivo: ' . $e->getMessage());
             return back()->with('error', 'Error al cambiar el estado del dispositivo');

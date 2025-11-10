@@ -17,7 +17,13 @@ class AlertFactory extends Factory
     public function definition(): array
     {
         $reading = \App\Models\SensorReading::factory()->create();
-        $rule = \App\Models\AlertRule::factory()->create(['sensor_type_id' => $reading->sensor->sensor_type_id]);
+        $sensor = $reading->sensor;
+
+        $rule = \App\Models\AlertRule::factory()->create([
+            'sensor_type_id' => $sensor->sensor_type_id,
+            'device_id' => $sensor->device_id,
+            'sensor_id' => $sensor->id,
+        ]);
         return [
             // 'sensor_id' => $reading->sensor_id,
             'sensor_reading_id' => $reading->id,

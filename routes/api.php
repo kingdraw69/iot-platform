@@ -22,6 +22,7 @@ Route::prefix('devices')->group(function () {
 
 // API para sensores
 Route::prefix('sensors')->group(function () {
+    Route::get('/{sensor}/latest-readings', [SensorApiController::class, 'latestReadings']);
     Route::get('/{sensor}/readings', [SensorApiController::class, 'readings']);
     Route::post('/{sensor}/readings', [SensorApiController::class, 'storeReading']);
     Route::get('/', [SensorApiController::class, 'index']);

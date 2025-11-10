@@ -2,21 +2,63 @@
 
 @section('content')
 <div class="container">
-    <h1>Alertas Activas</h1>
-    <div class="list-group">
-        @foreach($alerts as $alert)
-            <a href="#" class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
-                    <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
+    @if(!$activeAlerts->isEmpty())
+        <div class="text-end mb-3">
+            <form action="/alerts/mark-all-resolved" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    Marcar todas como revisadas
+                </button>
+            </form>
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    
+    <h1 class="mb-3">Alertas Activas</h1>
+
+    @if($activeAlerts->isEmpty())
+        <div class="alert alert-success">
+            No hay alertas activas en este momento.
+        </div>
+    @else
+        <div class="list-group">
+            @foreach($activeAlerts as $alert)
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
+                            <p class="mb-1">
+                                {{ $alert->alertRule->message }}<br>
+                                <small class="text-muted">
+                                    Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}
+                                    · Aula: {{ $alert->sensorReading->sensor->device->classroom->name }}
+                                </small>
+                            </p>
+                            <small class="text-muted">
+                                Registrada {{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}
+                            </small>
+                        </div>
+                        <form action="{{ route('alerts.resolve', $alert) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                Marcar como revisada
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
-                <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
-                <small>Aula: {{ $alert->sensorReading->sensor->device->classroom->name }}</small>
-            </a>
-        @endforeach
-    </div>
-    {{ $alerts->links() }}
+            @endforeach
+        </div>
+        <div class="mt-3">
+            {{ $activeAlerts->links() }}
+        </div>
+    @endif
 
     <div class="card mt-4">
         <div class="card-header">
@@ -34,7 +76,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($alertHistory as $alert)
+                    @forelse($alertHistory as $alert)
                         <tr>
                             <td>{{ $alert->sensorReading->sensor->name }}</td>
                             <td>{{ $alert->sensorReading->sensor->device->name }}</td>
@@ -42,9 +84,14 @@
                             <td>{{ $alert->created_at }}</td>
                             <td>{{ $alert->resolved_at }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Sin alertas resueltas aún.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
+            {{ $alertHistory->links() }}
         </div>
     </div>
 </div>

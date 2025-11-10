@@ -24,6 +24,7 @@
     
     <!-- Custom CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/custom-pagination.css') }}" rel="stylesheet">
     
     @stack('styles')
 </head>

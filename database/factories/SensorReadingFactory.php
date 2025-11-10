@@ -16,11 +16,17 @@ class SensorReadingFactory extends Factory
      */
     public function definition(): array
     {
-        $sensor = \App\Models\Sensor::factory()->create();
-        $sensorType = $sensor->sensorType;
         return [
-            'sensor_id' => $sensor->id,
-            'value' => $this->faker->unique()->randomFloat(2, $sensorType->min_range, $sensorType->max_range), // Generar valores únicos
+            'sensor_id' => \App\Models\Sensor::factory(),
+            'value' => function (array $attributes) {
+                $sensor = \App\Models\Sensor::find($attributes['sensor_id']);
+                $sensorType = $sensor?->sensorType;
+
+                $min = $sensorType?->min_range ?? 0;
+                $max = $sensorType?->max_range ?? 100;
+
+                return $this->faker->randomFloat(2, $min, $max);
+            },
             'reading_time' => $this->faker->unique()->dateTimeThisMonth(),
         ];
     }
