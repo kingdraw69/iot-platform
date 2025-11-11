@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 
 class ConfigController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only('update');
+    }
+
     public function index()
     {
         $settings = [
@@ -27,6 +32,7 @@ class ConfigController extends Controller
         return view('config.index_config', [
             'settings' => $settings,
             'deviceTypes' => $deviceTypes,
+            'isAdmin' => auth()->user()?->is_admin ?? false,
         ]);
     }
 

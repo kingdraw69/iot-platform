@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isAdmin = $isAdmin ?? (auth()->user()?->is_admin ?? false);
+@endphp
 <div class="container-fluid px-4">
     <div class="card shadow border-0">
         <!-- Card Header -->
@@ -25,6 +28,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             @endif
+            @if(! $isAdmin)
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="fas fa-lock me-3"></i>
+                <div>
+                    Solo los administradores pueden modificar la configuración. Los valores se muestran en modo lectura.
+                </div>
+            </div>
+            @endif
 
             <form action="{{ route('config.update') }}" method="POST">
                 @csrf
@@ -43,7 +54,7 @@
                                 <label for="app_name" class="form-label">Nombre de la Aplicación</label>
                                 <input type="text" class="form-control @error('app_name') is-invalid @enderror" 
                                     id="app_name" name="app_name" 
-                                    value="{{ old('app_name', $settings['app_name']) }}" required>
+                                    value="{{ old('app_name', $settings['app_name']) }}" required @disabled(!$isAdmin)>
                                 @error('app_name')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -52,7 +63,7 @@
                                 <label for="app_url" class="form-label">URL de la Aplicación</label>
                                 <input type="url" class="form-control @error('app_url') is-invalid @enderror" 
                                     id="app_url" name="app_url" 
-                                    value="{{ old('app_url', $settings['app_url']) }}" required>
+                                    value="{{ old('app_url', $settings['app_url']) }}" required @disabled(!$isAdmin)>
                                 @error('app_url')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -68,7 +79,7 @@
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="mail_enabled_toggle" 
                                 {{ $settings['mail_enabled'] ? 'checked' : '' }}
-                                onchange="updateEmailStatus(this)">
+                                onchange="updateEmailStatus(this)" @disabled(!$isAdmin)>
                             <label class="form-check-label" for="mail_enabled_toggle" id="toggleLabel">
                                 <span class="badge" id="statusBadge" style="background-color: {{ $settings['mail_enabled'] ? '#198754' : '#6c757d' }}">
                                     {{ $settings['mail_enabled'] ? 'Activo' : 'Desactivado' }}
@@ -77,11 +88,13 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        @if($isAdmin)
                         <div class="alert alert-info border-0 mb-3">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Nota:</strong> Para cambiar el servidor SMTP, credenciales y otros parámetros de email, dirígete a 
                             <a href="{{ route('email-config.index') }}" class="alert-link">Gestión de Configuración de Email</a>.
                         </div>
+                        @endif
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="mail_from" class="form-label">Email Remitente</label>
@@ -113,7 +126,7 @@
                                 <input type="number" class="form-control @error('alert_threshold') is-invalid @enderror"
                                     id="alert_threshold" name="alert_threshold"
                                     value="{{ old('alert_threshold', $settings['alert_threshold']) }}"
-                                    min="0" step="1" required>
+                                    min="0" step="1" required @disabled(!$isAdmin)>
                                 @error('alert_threshold')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -124,7 +137,7 @@
                                 <input type="number" class="form-control @error('sensor_update_interval') is-invalid @enderror"
                                     id="sensor_update_interval" name="sensor_update_interval"
                                     value="{{ old('sensor_update_interval', $settings['sensor_update_interval']) }}"
-                                    min="1000" step="100" required>
+                                    min="1000" step="100" required @disabled(!$isAdmin)>
                                 @error('sensor_update_interval')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -134,6 +147,7 @@
                     </div>
                 </div>
 
+                @if($isAdmin)
                 <!-- Configuración Avanzada -->
                 <div class="card mb-4" id="advanced-config">
                     <div class="card-header bg-light">
@@ -194,6 +208,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 <!-- Información del Sistema -->
                 <div class="card mb-4">
@@ -231,9 +246,15 @@
                     <a href="{{ route('dashboard') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i> Volver
                     </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i> Guardar Cambios
-                    </button>
+                    @if($isAdmin)
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i> Guardar Cambios
+                        </button>
+                    @else
+                        <button type="button" class="btn btn-primary" disabled>
+                            <i class="fas fa-lock me-2"></i> Solo lectura
+                        </button>
+                    @endif
                 </div>
             </form>
         </div>

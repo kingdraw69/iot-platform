@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Mail;
 
 class EmailConfigController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin');
+    }
+
     /**
      * Mostrar la página de gestión de configuración de email
      */

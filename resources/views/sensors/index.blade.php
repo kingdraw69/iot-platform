@@ -1,12 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isAdmin = auth()->user()?->is_admin ?? false;
+@endphp
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Listado de Sensores</h5>
+        @if($isAdmin)
         <a href="{{ route('sensors.create') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Nuevo Sensor
         </a>
+        @endif
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -53,16 +58,18 @@
                             <a href="{{ route('sensors.show', $sensor) }}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('sensors.edit', $sensor) }}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form action="{{ route('sensors.destroy', $sensor) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                            @if($isAdmin)
+                                <a href="{{ route('sensors.edit', $sensor) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ route('sensors.destroy', $sensor) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                     @endforeach

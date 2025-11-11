@@ -10,6 +10,17 @@ use Illuminate\Support\Facades\Log;
 
 class SensorController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only([
+            'create',
+            'store',
+            'edit',
+            'update',
+            'destroy',
+        ]);
+    }
+
     public function index()
     {
         $sensors = Sensor::with(['device.classroom', 'sensorType', 'readings'])

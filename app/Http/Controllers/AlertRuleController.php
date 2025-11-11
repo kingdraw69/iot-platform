@@ -12,6 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class AlertRuleController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin');
+    }
+
     public function create()
     {
         $sensorTypes = SensorType::all();

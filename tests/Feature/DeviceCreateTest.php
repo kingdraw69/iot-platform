@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use App\Models\DeviceType;
 use App\Models\Classroom;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class DeviceCreateTest extends TestCase
@@ -16,8 +17,9 @@ class DeviceCreateTest extends TestCase
     {
         $deviceType = DeviceType::factory()->create();
         $classroom = Classroom::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $response = $this->post(route('devices.store'), [
+        $response = $this->actingAs($admin)->post(route('devices.store'), [
             'name' => 'Test Device',
             'serial_number' => '12345ABC',
             'device_type_id' => $deviceType->id,

@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isAdmin = auth()->user()?->is_admin ?? false;
+@endphp
 <div class="container-fluid px-4">
     <div class="card shadow border-0">
         <!-- Card Header with Actions -->
@@ -12,11 +15,13 @@
                     <p class="mb-0 opacity-75">Listado completo de dispositivos registrados</p>
                 </div>
             </div>
+            @if($isAdmin)
             <div>
                 <a href="{{ route('devices.create') }}" class="btn btn-light btn-lg">
                     <i class="fas fa-plus-circle me-2"></i> Nuevo Dispositivo
                 </a>
             </div>
+            @endif
         </div>
 
         <!-- Alert Messages -->
@@ -125,15 +130,21 @@
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <form action="{{ route('devices.toggle-status', $device) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" 
-                                            class="btn btn-sm btn-{{ $device->status ? 'success' : 'secondary' }} d-flex align-items-center"
-                                            title="{{ $device->status ? 'Activo - Click para desactivar' : 'Inactivo - Click para activar' }}">
-                                            <i class="fas fa-power-off me-2"></i>
-                                            <span>{{ $device->status ? 'Activo' : 'Inactivo' }}</span>
-                                        </button>
-                                    </form>
+                                    @if($isAdmin)
+                                        <form action="{{ route('devices.toggle-status', $device) }}" method="POST" class="d-inline toggle-status-form">
+                                            @csrf
+                                            <button type="submit" 
+                                                class="btn btn-sm btn-{{ $device->status ? 'success' : 'secondary' }} d-flex align-items-center"
+                                                title="{{ $device->status ? 'Activo - Click para desactivar' : 'Inactivo - Click para activar' }}">
+                                                <i class="fas fa-power-off me-2"></i>
+                                                <span>{{ $device->status ? 'Activo' : 'Inactivo' }}</span>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="badge bg-{{ $device->status ? 'success' : 'secondary' }} py-2 px-3">
+                                            {{ $device->status ? 'Activo' : 'Inactivo' }}
+                                        </span>
+                                    @endif
                                 </div>
                             </td>
                             <td>
@@ -155,16 +166,18 @@
                                     <a href="{{ route('devices.show', $device) }}" class="btn btn-icon btn-light btn-sm me-2" title="Ver detalles">
                                         <i class="fas fa-eye text-primary"></i>
                                     </a>
-                                    <a href="{{ route('devices.edit', $device) }}" class="btn btn-icon btn-light btn-sm me-2" title="Editar">
-                                        <i class="fas fa-pen text-warning"></i>
-                                    </a>
-                                    <form action="{{ route('devices.destroy', $device) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-icon btn-light btn-sm" title="Eliminar" onclick="return confirm('¿Eliminar este dispositivo permanentemente?')">
-                                            <i class="fas fa-trash text-danger"></i>
-                                        </button>
-                                    </form>
+                                    @if($isAdmin)
+                                        <a href="{{ route('devices.edit', $device) }}" class="btn btn-icon btn-light btn-sm me-2" title="Editar">
+                                            <i class="fas fa-pen text-warning"></i>
+                                        </a>
+                                        <form action="{{ route('devices.destroy', $device) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-icon btn-light btn-sm" title="Eliminar" onclick="return confirm('¿Eliminar este dispositivo permanentemente?')">
+                                                <i class="fas fa-trash text-danger"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -174,9 +187,11 @@
                                 <img src="{{ asset('assets/media/illustrations/no-devices.png') }}" alt="No devices" class="w-100px mb-4">
                                 <h4 class="text-gray-700 mb-2">No hay dispositivos registrados</h4>
                                 <p class="text-muted mb-4">Comienza agregando tu primer dispositivo IoT al sistema</p>
+                                @if($isAdmin)
                                 <a href="{{ route('devices.create') }}" class="btn btn-primary">
                                     <i class="fas fa-plus-circle me-2"></i> Crear Dispositivo
                                 </a>
+                                @endif
                             </td>
                         </tr>
                         @endforelse
