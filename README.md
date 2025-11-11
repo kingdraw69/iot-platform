@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="320" alt="Laravel Logo">
+  
   <h1>IoT Platform · Smart Classroom Monitoring</h1>
   <p>End-to-end IoT monitoring platform built with a clean Laravel 12 architecture.</p>
 </div>
