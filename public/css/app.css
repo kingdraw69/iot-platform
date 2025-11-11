@@ -93,3 +93,9 @@ main {
     font-weight: 600;
     color: #495057;
 }
+
+/* Estilos para alertas scrolleables cuando se expanden */
+.alerts-scroll {
+    max-height: 300px;
+    overflow-y: auto;
+}

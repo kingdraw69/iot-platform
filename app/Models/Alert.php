@@ -43,20 +43,27 @@ class Alert extends Model
                 ?? env('RECIPIENT_EMAIL')
                 ?? env('recipient_email');
 
-            $fromAddress = SystemSetting::get('mail_from_address', config('mail.from.address'));
-            $fromName = SystemSetting::get('mail_from_name', config('mail.from.name'));
-
             if (! $recipient) {
                 Log::warning('No hay destinatario configurado para alertas peligrosas. Se omitirá el envío de correo.');
                 return false;
             }
 
-            if ($fromAddress) {
-                config([
-                    'mail.from.address' => $fromAddress,
-                    'mail.from.name' => $fromName,
-                ]);
-            }
+            // Configurar toda la conexión de correo desde SystemSettings (igual que en testEmail)
+            $mailSettings = [
+                'driver' => SystemSetting::get('mail_mailer', config('mail.mailer')),
+                'host' => SystemSetting::get('mail_host', config('mail.host')),
+                'port' => SystemSetting::get('mail_port', config('mail.port')),
+                'username' => SystemSetting::get('mail_username', config('mail.username')),
+                'password' => SystemSetting::get('mail_password', ''),
+                'encryption' => SystemSetting::get('mail_encryption', config('mail.encryption')),
+                'from' => [
+                    'address' => SystemSetting::get('mail_from_address', config('mail.from.address')),
+                    'name' => SystemSetting::get('mail_from_name', config('mail.from.name')),
+                ],
+            ];
+
+            // Aplicar la configuración completa de correo
+            config(['mail' => $mailSettings]);
 
             Log::debug('Enviando alerta por correo a: ' . $recipient);
             $mailable = new DangerAlertMail($emailData);
@@ -64,9 +71,11 @@ class Alert extends Model
             $mailable->to($recipient);
             Mail::send($mailable);
 
+            Log::info('Correo de alerta de peligro enviado exitosamente a: ' . $recipient);
             return true;
         } catch (\Exception $e) {
             Log::error('Error enviando email de alerta: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return false;
         }
     }

@@ -6,30 +6,27 @@ use App\Models\Device;
 use App\Models\Alert;
 use App\Models\SensorType;
 use App\Models\SensorReading; // Importar SensorReading
+use App\Services\DashboardMetricsService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    public function __construct(private DashboardMetricsService $metrics)
+    {
+    }
+
     public function index()
     {
-        $totalDevices = Device::count();
-        $activeDevices = Device::where('status', true)->count();
-        $activeAlerts = Alert::where('resolved', false)->count(); // Contar alertas activas
+        $summary = $this->metrics->getSummaryStats();
 
-        $activeAlertsList = Alert::with(['sensorReading.sensor.sensorType', 'sensorReading.sensor.device.classroom', 'alertRule'])
-            ->where('resolved', false)
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $activeAlertsList = $this->metrics->getActiveAlertsList();
 
-        $devices = Device::with('classroom')->get();
-        $sensorTypes = SensorType::all();
-        $sensors = \App\Models\Sensor::with('sensorType')->get();
+        $devices = $this->metrics->getDevicesForSelection();
+        $sensorTypes = $this->metrics->getSensorTypes();
+        $sensors = $this->metrics->getSensors();
 
         return view('dashboard', compact(
-            'totalDevices',
-            'activeDevices',
-            'activeAlerts',
+            'summary',
             'activeAlertsList',
             'devices',
             'sensorTypes',
@@ -52,16 +49,11 @@ class DashboardController extends Controller
 
     public function getActiveAlerts()
     {
-        $activeAlerts = Alert::where('resolved', false)->count();
-        $activeAlertsList = Alert::with(['sensorReading.sensor.sensorType', 'sensorReading.sensor.device.classroom', 'alertRule'])
-            ->where('resolved', false)
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $summary = $this->metrics->getSummaryStats();
 
         return response()->json([
-            'count' => $activeAlerts,
-            'alerts' => $activeAlertsList
+            'count' => $summary['activeAlerts'],
+            'alerts' => $this->metrics->getActiveAlertsList()
         ]);
     }
 }

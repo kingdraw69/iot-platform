@@ -3,38 +3,34 @@
 namespace App\Observers;
 
 use App\Models\SensorReading;
-use App\Models\Alert;
 use Illuminate\Support\Facades\Log;
 
 class SensorReadingObserver
 {
     public function created(SensorReading $sensorReading)
     {
+        Log::debug('SensorReadingObserver: Nueva lectura creada', [
+            'sensor_reading_id' => $sensorReading->id,
+            'sensor_id' => $sensorReading->sensor_id,
+            'value' => $sensorReading->value,
+        ]);
+
         $triggeredRules = $sensorReading->checkForAlert();
 
         if ($triggeredRules->isEmpty()) {
+            Log::debug('SensorReadingObserver: No se activaron reglas de alerta para la lectura', [
+                'sensor_reading_id' => $sensorReading->id,
+            ]);
             return;
         }
 
-        foreach ($triggeredRules as $rule) {
-            if (strtolower($rule->severity ?? '') !== 'danger') {
-                continue;
-            }
+        Log::info('SensorReadingObserver: Se activaron ' . $triggeredRules->count() . ' regla(s) de alerta', [
+            'sensor_reading_id' => $sensorReading->id,
+            'rules_count' => $triggeredRules->count(),
+        ]);
 
-            $device = $sensorReading->sensor->device;
-            $location = $device && $device->classroom ? $device->classroom->name : 'Ubicación desconocida';
-
-            $alertDetails = [
-                'device' => $device?->name ?? 'Dispositivo desconocido',
-                'location' => $location,
-                'sensor' => $sensorReading->sensor->name,
-                'alert_message' => $rule->message,
-                'value' => $sensorReading->value,
-            ];
-
-            Alert::sendDangerAlertEmail($alertDetails);
-
-            Log::info('Alerta de peligro activada para la lectura del sensor: ' . $sensorReading->id);
-        }
+        Log::debug('SensorReadingObserver: Finalizó procesamiento de reglas para la lectura', [
+            'sensor_reading_id' => $sensorReading->id,
+        ]);
     }
 }

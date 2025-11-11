@@ -1,111 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="row">
-    <!-- Summary Cards -->
-    <div class="col-md-4">
-        <div class="card text-white bg-primary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Dispositivos Totales</h5>
-                <p class="card-text display-4">{{ $totalDevices }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-success mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Dispositivos Activos</h5>
-                <p class="card-text display-4">{{ $activeDevices }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-danger mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Alertas Activas</h5>
-                <p class="card-text display-4">{{ $activeAlerts }}</p>
-            </div>
-        </div>
-    </div>
+@include('dashboard.partials.summary-cards', ['summary' => $summary])
+
+<div class="row g-3 dashboard-row">
+    @include('dashboard.partials.realtime-monitor', ['devices' => $devices])
+    @include('dashboard.partials.alerts-card', ['summary' => $summary, 'activeAlertsList' => $activeAlertsList])
 </div>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5>Monitor de Sensores en Tiempo Real</h5>
-                <div class="d-flex align-items-center">
-                    <!-- Toggle de Tiempo Real -->
-                    <div class="form-check form-switch me-3">
-                        <input class="form-check-input" type="checkbox" id="realTimeToggle" checked>
-                        <label class="form-check-label" for="realTimeToggle">Tiempo Real</label>
-                    </div>
-
-                    <!-- Selección de dispositivo -->
-                    <select id="deviceSelect_main" class="form-select me-2 device-select" aria-label="Seleccione un dispositivo">
-                        <option value="" disabled selected>Seleccione un dispositivo</option>
-                        @if($devices->isEmpty())
-                            <option value="" disabled>No hay dispositivos disponibles</option>
-                        @else
-                            @foreach($devices as $device)
-                                <option value="{{ $device->id }}">{{ $device->name }}</option>
-                            @endforeach
-                        @endif
-                    </select>
-
-                    <!-- Selección de sensor -->
-                    <select id="sensorSelect_main" class="form-select sensor-select" aria-label="Seleccione un sensor">
-                        <option value="" disabled selected>Seleccione un sensor</option>
-                    </select>
-                </div>
-            </div>
-            <div class="card-body">
-                <canvas id="sensorsChart_main" class="sensor-chart" height="300"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card alerts-card">
-            <div class="card-header d-flex justify-content-between align-items-center alerts-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#alertsCollapse" aria-expanded="true" aria-controls="alertsCollapse" data-tooltip="true" title="Haz clic para expandir o colapsar las alertas">
-                <h5 id="alertsHeader" class="mb-0">Últimas Alertas ({{ $activeAlerts }})</h5>
-                <i class="fas fa-chevron-down" id="alertsChevron"></i>
-            </div>
-            <div id="alertsCollapse" class="collapse show">
-                <div class="card-body alerts-scroll">
-                    <div id="alertsList">
-                        @if(isset($activeAlertsList) && !$activeAlertsList->isEmpty())
-                            <div class="list-group">
-                                @foreach($activeAlertsList as $alert)
-                                    <a href="#" class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1">Sensor: {{ $alert->sensorReading->sensor->name }}</h6>
-                                            <small>{{ \Carbon\Carbon::parse($alert->created_at)->diffForHumans() }}</small>
-                                        </div>
-                                        <p class="mb-1">Mensaje: {{ $alert->alertRule->message }}</p>
-                                        <small>Valor detectado: {{ $alert->sensorReading->value }} {{ $alert->sensorReading->sensor->sensorType->unit }}</small>
-                                    </a>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="alert alert-info mb-0">
-                                No hay alertas recientes disponibles.
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <button id="addMonitorButton" class="btn btn-primary mb-3">Agregar Monitor de Sensores</button>
-    </div>
-</div>
-<div id="monitorsContainer" class="row">
-    <!-- Aquí se agregarán los monitores dinámicamente -->
-</div>
+@include('dashboard.partials.monitors')
 
 @push('scripts')
 <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
@@ -211,7 +114,7 @@
             if (alertsList && data.alerts) {
                 if (data.alerts.length > 0) {
                     const alertsHtml = `
-                        <div class="list-group">
+                        <div class="list-group list-group-flush">
                             ${data.alerts.map(alert => `
                                 <a href="#" class="list-group-item list-group-item-action">
                                     <div class="d-flex w-100 justify-content-between">
@@ -227,11 +130,14 @@
                     alertsList.innerHTML = alertsHtml;
                 } else {
                     alertsList.innerHTML = `
-                        <div class="alert alert-info mb-0">
+                        <div class="alert alert-info m-3 mb-0">
                             No hay alertas recientes disponibles.
                         </div>
                     `;
                 }
+                
+                // Recalcular altura después de actualizar el contenido
+                setTimeout(adjustAlertsScrollHeight, 50);
             }
 
             // Update the summary card count as well
@@ -264,18 +170,93 @@
         function toggleAlertsChevron() {
             const alertsCollapse = document.getElementById('alertsCollapse');
             const chevron = document.getElementById('alertsChevron');
+            const alertsToggle = document.querySelector('.alerts-toggle');
 
             if (alertsCollapse && chevron) {
+                // Inicializar el estado del chevron basado en el estado inicial
+                const updateChevron = (isExpanded) => {
+                    if (isExpanded) {
+                        chevron.classList.remove('fa-chevron-down');
+                        chevron.classList.add('fa-chevron-up');
+                    } else {
+                        chevron.classList.remove('fa-chevron-up');
+                        chevron.classList.add('fa-chevron-down');
+                    }
+                };
+
+                // Estado inicial
+                updateChevron(alertsCollapse.classList.contains('show'));
+
+                // Eventos de Bootstrap collapse
                 alertsCollapse.addEventListener('show.bs.collapse', function () {
-                    chevron.classList.remove('fa-chevron-down');
-                    chevron.classList.add('fa-chevron-up');
+                    updateChevron(true);
+                });
+
+                alertsCollapse.addEventListener('shown.bs.collapse', function () {
+                    // Recalcular altura después de que se complete la animación
+                    adjustAlertsScrollHeight();
                 });
 
                 alertsCollapse.addEventListener('hide.bs.collapse', function () {
-                    chevron.classList.remove('fa-chevron-up');
-                    chevron.classList.add('fa-chevron-down');
+                    updateChevron(false);
+                });
+
+                alertsCollapse.addEventListener('hidden.bs.collapse', function () {
+                    // No hacer nada, Bootstrap maneja el display
+                });
+
+                // Asegurar que el toggle funcione correctamente
+                // No interferir con el comportamiento de Bootstrap
+                if (alertsToggle) {
+                    // Verificar que el atributo aria-expanded se actualice
+                    alertsToggle.addEventListener('click', function(e) {
+                        // Bootstrap manejará el toggle automáticamente
+                        // Solo necesitamos actualizar el aria-expanded después de un pequeño delay
+                        setTimeout(() => {
+                            const isExpanded = alertsCollapse.classList.contains('show');
+                            alertsToggle.setAttribute('aria-expanded', isExpanded);
+                        }, 10);
+                    });
+                }
+            }
+        }
+
+        // Función para ajustar dinámicamente la altura del área scrolleable
+        function adjustAlertsScrollHeight() {
+            const alertsCard = document.getElementById('alertsCardContainer');
+            const alertsCollapse = document.getElementById('alertsCollapse');
+            const alertsList = document.getElementById('alertsList');
+            const cardHeader = document.querySelector('.alerts-card .card-header');
+
+            if (!alertsCard || !alertsList || !cardHeader) return;
+
+            // Solo ajustar si el collapse está visible
+            if (alertsCollapse && alertsCollapse.classList.contains('show')) {
+                // Usar requestAnimationFrame para asegurar que el DOM esté actualizado
+                requestAnimationFrame(() => {
+                    // Obtener altura total de la tarjeta
+                    const cardHeight = alertsCard.offsetHeight;
+                    // Obtener altura del header
+                    const headerHeight = cardHeader.offsetHeight;
+                    // Calcular altura disponible para el scroll (altura total - header)
+                    const availableHeight = cardHeight - headerHeight;
+
+                    // Aplicar la altura calculada al área scrolleable
+                    // Usamos maxHeight para limitar el scroll y permitir que flexbox maneje el resto
+                    if (availableHeight > 0) {
+                        alertsList.style.maxHeight = availableHeight + 'px';
+                    }
                 });
             }
+        }
+
+        // Ajustar altura cuando cambia el tamaño de la ventana
+        function setupAlertsScrollResize() {
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(adjustAlertsScrollHeight, 100);
+            });
         }
 
         function pushDataPoint(chartInstance, timestamp, value) {
@@ -746,8 +727,73 @@
             .then(() => {
                 subscribeToAlertsChannel();
                 toggleAlertsChevron();
+                adjustLayoutForSidebar();
+                setupAlertsScrollResize();
+                // Ajustar altura inicial después de que todo esté cargado
+                setTimeout(() => {
+                    adjustAlertsScrollHeight();
+                }, 500);
             })
             .catch(error => console.error('No se pudieron aplicar las preferencias:', error));
+
+        // Función para ajustar el layout cuando el sidebar se colapsa/expande
+        function adjustLayoutForSidebar() {
+            const sidebarElement = document.getElementById('sidebarContent');
+            const dashboardRow = document.querySelector('.dashboard-row');
+            const realtimeMonitor = document.querySelector('.dashboard-row > .col-md-8');
+            const alertsCard = document.querySelector('.dashboard-row > .col-md-4');
+
+            if (!sidebarElement || !dashboardRow) return;
+
+            const checkSidebarState = () => {
+                // Pequeño delay para asegurar que las clases de Bootstrap se hayan aplicado
+                setTimeout(() => {
+                    const isCollapsed = document.body.classList.contains('sidebar-collapsed') || 
+                                       !sidebarElement.classList.contains('show');
+                    
+                    if (realtimeMonitor && alertsCard) {
+                        // Remover todas las clases de tamaño posibles
+                        realtimeMonitor.classList.remove('col-md-7', 'col-md-8', 'col-lg-7', 'col-lg-8');
+                        alertsCard.classList.remove('col-md-4', 'col-md-5', 'col-lg-4', 'col-lg-5');
+                        
+                        if (isCollapsed) {
+                            // Cuando el sidebar está colapsado, usar más espacio disponible
+                            // Ajustar proporcionalmente: 7:5 en lugar de 8:4 (mantiene similar proporción pero más espacio)
+                            realtimeMonitor.classList.add('col-md-7', 'col-lg-7');
+                            alertsCard.classList.add('col-md-5', 'col-lg-5');
+                        } else {
+                            // Cuando el sidebar está expandido, usar el tamaño original
+                            realtimeMonitor.classList.add('col-md-8', 'col-lg-8');
+                            alertsCard.classList.add('col-md-4', 'col-lg-4');
+                        }
+                    }
+                    
+                    // Recalcular altura del scroll después de ajustar el layout
+                    setTimeout(adjustAlertsScrollHeight, 100);
+                }, 50);
+            };
+
+            // Observar cambios en el estado del sidebar
+            const observer = new MutationObserver(checkSidebarState);
+            observer.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+            observer.observe(sidebarElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+
+            // Verificar estado inicial
+            checkSidebarState();
+
+            // También escuchar eventos de Bootstrap collapse
+            sidebarElement.addEventListener('hidden.bs.collapse', checkSidebarState);
+            sidebarElement.addEventListener('shown.bs.collapse', checkSidebarState);
+            
+            // Escuchar cambios en el tamaño de la ventana para reajustar
+            window.addEventListener('resize', checkSidebarState);
+        }
     });
 </script>
 @endpush

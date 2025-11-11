@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use App\Models\SensorReading;
 use App\Observers\SensorReadingObserver;
+use App\Models\Alert;
+use App\Observers\AlertObserver;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -28,5 +30,6 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         SensorReading::observe(SensorReadingObserver::class);
+        Alert::observe(AlertObserver::class);
     }
 }

@@ -1,7 +1,3 @@
-@php
-    $unresolvedAlertsCount = \App\Models\Alert::where('resolved', false)->count();
-@endphp
-
 <div class="col-md-3 col-lg-2 d-md-block bg-dark sidebar sidebar-column min-vh-100" id="sidebarColumn">
     <div id="sidebarContent" class="position-sticky pt-3 collapse collapse-horizontal show">
         <div class="sidebar-heading text-center text-white mb-4">
@@ -37,7 +33,7 @@
             <li class="nav-item">
                 <a class="nav-link {{ request()->is('alerts*') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
                     <i class="fas fa-bell me-2"></i> Alertas
-                    @if($unresolvedAlertsCount)
+                    @if(($unresolvedAlertsCount ?? 0) > 0)
                         <span class="badge bg-danger float-end">{{ $unresolvedAlertsCount }}</span>
                     @endif
                 </a>

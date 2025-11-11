@@ -158,6 +158,15 @@
         body.sidebar-collapsed main {
             flex: 1 0 100%;
             max-width: 100%;
+            transition: all 0.25s ease;
+        }
+
+        .dashboard-row {
+            transition: all 0.25s ease;
+        }
+
+        .dashboard-row > [class*='col-'] {
+            transition: all 0.25s ease;
         }
 
         @media (max-width: 767.98px) {
@@ -166,20 +175,78 @@
             }
         }
 
+        .alerts-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .alerts-card .card-header {
+            flex-shrink: 0;
+        }
+
+        .alerts-card .card-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .alerts-card #alertsCollapse {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        /* Cuando está expandido, usar block como Bootstrap espera, pero el contenido interno usa flex */
+        .alerts-card #alertsCollapse.collapse.show {
+            display: block;
+        }
+
+        /* El card-body interno maneja el flexbox */
+        .alerts-card #alertsCollapse .card-body {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
         .alerts-scroll {
-            max-height: 550px;
+            flex: 1 1 auto;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
-        .alerts-card {
-            max-height: 550px;
+        .dashboard-row > [class*='col-'] {
             display: flex;
-            flex-direction: column;
+            transition: all 0.35s ease;
         }
 
-        .alerts-card .card-body {
+        .dashboard-row > [class*='col-'] > .card {
             flex: 1 1 auto;
+            transition: all 0.35s ease;
+        }
+
+        .alerts-card .collapse {
+            transition: height 0.35s ease;
+        }
+
+        .alerts-card .alerts-toggle {
+            transition: background-color 0.2s ease;
+        }
+
+        .alerts-card .alerts-toggle:hover {
+            background-color: #f8f9fa;
+        }
+
+        #alertsChevron {
+            transition: transform 0.35s ease;
+        }
+
+        .alerts-card .list-group-flush .list-group-item {
+            border-left: 0;
+            border-right: 0;
         }
     </style>
 </body>
