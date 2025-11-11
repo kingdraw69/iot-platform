@@ -65,13 +65,13 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#alertsCollapse" aria-expanded="true" aria-controls="alertsCollapse" style="cursor: pointer;">
+        <div class="card alerts-card">
+            <div class="card-header d-flex justify-content-between align-items-center alerts-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#alertsCollapse" aria-expanded="true" aria-controls="alertsCollapse" data-tooltip="true" title="Haz clic para expandir o colapsar las alertas">
                 <h5 id="alertsHeader" class="mb-0">Últimas Alertas ({{ $activeAlerts }})</h5>
                 <i class="fas fa-chevron-down" id="alertsChevron"></i>
             </div>
             <div id="alertsCollapse" class="collapse show">
-                <div class="card-body">
+                <div class="card-body alerts-scroll">
                     <div id="alertsList">
                         @if(isset($activeAlertsList) && !$activeAlertsList->isEmpty())
                             <div class="list-group">
@@ -112,6 +112,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"], [data-tooltip="true"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
         const MAX_POINTS = 10;
         const monitorsContainer = document.getElementById('monitorsContainer');
         const addMonitorButton = document.getElementById('addMonitorButton');

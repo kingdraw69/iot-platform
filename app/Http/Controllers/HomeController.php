@@ -29,4 +29,14 @@ class HomeController extends Controller
     {
         return view('dashboard');
     }
+
+    /**
+     * Show the user profile.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function profile()
+    {
+        return view('profile');
+    }
 }

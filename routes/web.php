@@ -29,6 +29,8 @@ Auth::routes();
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+Route::get('/profile', [App\Http\Controllers\HomeController::class, 'profile'])->name('profile')->middleware('auth');
+
 Route::middleware('auth')->prefix('dashboard')->group(function () {
     Route::get('preferences', [DashboardPreferenceController::class, 'show'])->name('dashboard.preferences.show');
     Route::post('preferences', [DashboardPreferenceController::class, 'store'])->name('dashboard.preferences.store');

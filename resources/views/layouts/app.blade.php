@@ -30,105 +30,14 @@
 </head>
 <body>
     <div id="app">
-        <!-- Navbar Superior -->
-        <nav class="navbar navbar-expand-md navbar-dark bg-primary shadow-sm">
-            <div class="container-fluid">
-                <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    <i class="fas fa-shield-alt me-2"></i> SINOA
-                </a>
-
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav ms-auto">
-                        @guest
-                            @if (Route::has('login'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                </li>
-                            @endif
-
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                </li>
-                            @endif
-                        @else
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    <i class="fas fa-user-circle me-1"></i> {{ Auth::user()->name }}
-                                </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="#">
-                                        <i class="fas fa-user me-1"></i> Perfil
-                                    </a>
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                        <i class="fas fa-sign-out-alt me-1"></i> {{ __('Logout') }}
-                                    </a>
-
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            </li>
-                        @endguest
-                    </ul>
-                </div>
-            </div>
-        </nav>
+        @include('layouts.partials.navbar')
 
         <!-- Contenedor Principal -->
-        <div class="container-fluid">
+        <div class="container-fluid main-wrapper">
             <div class="row">
                 <!-- Sidebar -->
                 @auth
-                <div class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse" id="sidebar">
-                    <div class="position-sticky pt-3">
-                        <ul class="nav flex-column">
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                                    <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('devices*') ? 'active' : '' }}" href="{{ route('devices.index') }}">
-                                    <i class="fas fa-microchip me-2"></i> Dispositivos
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('sensors*') ? 'active' : '' }}" href="{{ route('sensors.index') }}">
-                                    <i class="fas fa-thermometer-half me-2"></i> Sensores
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('alerts*') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
-                                    <i class="fas fa-bell me-2"></i> Alertas
-                                    @if($unresolvedAlertsCount = \App\Models\Alert::where('resolved', false)->count())
-                                        <span class="badge bg-danger float-end">{{ $unresolvedAlertsCount }}</span>
-                                    @endif
-                                </a>
-                            </li>
-                            <li class="nav-item mt-3">
-                                <hr class="dropdown-divider bg-light">
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->is('config*') ? 'active' : '' }}" href="{{ route('config.index') }}">
-                                    <i class="fas fa-cog me-2"></i> Configuración
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+                    @include('layouts.partials.sidebar')
                 @endauth
 
                 <!-- Contenido Principal -->
@@ -157,6 +66,121 @@
         });
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sidebarElement = document.getElementById('sidebarContent');
+            const sidebarColumn = document.getElementById('sidebarColumn');
+            const toggleButtons = document.querySelectorAll('#sidebarToggle, #sidebarToggleNavbar');
+
+            if (sidebarElement && toggleButtons.length && sidebarColumn) {
+                const collapseInstance = new bootstrap.Collapse(sidebarElement, { toggle: false });
+
+                const updateButtonState = (button, isCollapsed) => {
+                    const icon = button.querySelector('i');
+                    const label = button.querySelector('span');
+                    const title = isCollapsed ? 'Mostrar menú' : 'Ocultar menú';
+                    button.setAttribute('aria-expanded', (!isCollapsed).toString());
+                    button.setAttribute('title', title);
+                    if (icon) {
+                        icon.classList.toggle('fa-angles-left', !isCollapsed);
+                        icon.classList.toggle('fa-angles-right', isCollapsed);
+                    }
+                    if (label) {
+                        label.textContent = isCollapsed ? 'Mostrar panel' : 'Ocultar panel';
+                    }
+                };
+
+                const updateState = (isCollapsed, triggeredButton = null) => {
+                    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                    toggleButtons.forEach(button => {
+                        if (!triggeredButton || button === triggeredButton) {
+                            updateButtonState(button, isCollapsed);
+                        } else {
+                            updateButtonState(button, !isCollapsed);
+                        }
+                    });
+                };
+
+                toggleButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        if (sidebarElement.classList.contains('show')) {
+                            collapseInstance.hide();
+                            updateState(true, button);
+                        } else {
+                            collapseInstance.show();
+                            updateState(false, button);
+                        }
+                    });
+                });
+
+                sidebarElement.addEventListener('hidden.bs.collapse', () => updateState(true));
+                sidebarElement.addEventListener('shown.bs.collapse', () => updateState(false));
+            }
+        });
+    </script>
+
     @stack('scripts')
+
+    <style>
+        body {
+            padding-top: 4.5rem;
+        }
+
+        .sidebar-column {
+            transition: flex-basis .25s ease, max-width .25s ease;
+        }
+
+        .letter-spacing-wide {
+            letter-spacing: .25em;
+        }
+
+        .sidebar .nav-link {
+            color: #adb5bd;
+            transition: color .2s ease;
+        }
+
+        .sidebar .nav-link.active {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        body.sidebar-collapsed #sidebarColumn {
+            flex: 0 0 0 !important;
+            max-width: 0 !important;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        body.sidebar-collapsed #sidebarContent {
+            display: none;
+        }
+
+        body.sidebar-collapsed main {
+            flex: 1 0 100%;
+            max-width: 100%;
+        }
+
+        @media (max-width: 767.98px) {
+            body {
+                padding-top: 3.75rem;
+            }
+        }
+
+        .alerts-scroll {
+            max-height: 550px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .alerts-card {
+            max-height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .alerts-card .card-body {
+            flex: 1 1 auto;
+        }
+    </style>
 </body>
 </html>
