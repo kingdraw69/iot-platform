@@ -1,6 +1,6 @@
 <div class="sidebar">
     <div class="sidebar-header">
-        <h3>IoT School Security</h3>
+        <h3>SINOA</h3>
     </div>
     <nav class="sidebar-nav">
         <ul class="nav">
@@ -28,9 +28,10 @@
                     @endif
                 </a>
             </li>
+
             <li class="nav-item">
-                <a class="nav-link {{ request()->is('sensor-types/create') ? 'active' : '' }}" href="{{ route('sensor-types.create') }}">
-                    <i class="fas fa-cogs"></i> Crear Tipo de Sensor
+                <a class="nav-link {{ request()->is('config*') ? 'active' : '' }}" href="{{ route('config.index') }}">
+                    <i class="fas fa-sliders-h"></i> Configuración
                 </a>
             </li>
         </ul>

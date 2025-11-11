@@ -7,25 +7,25 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'IoT School Security') }}</title>
+    <title>{{ config('app.name', 'SINOA') }}</title>
 
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
-    
+
     <!-- Lightweight Charts -->
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    
+
     <!-- Custom CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <link href="{{ asset('css/custom-pagination.css') }}" rel="stylesheet">
-    
+
     @stack('styles')
 </head>
 <body>
@@ -36,11 +36,11 @@
                 <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                
+
                 <a class="navbar-brand" href="{{ url('/') }}">
-                    <i class="fas fa-shield-alt me-2"></i> IoT School Security
+                    <i class="fas fa-shield-alt me-2"></i> SINOA
                 </a>
-                
+
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -109,12 +109,7 @@
                                     <i class="fas fa-thermometer-half me-2"></i> Sensores
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('alert-rules.create') }}">
-                                    <i class="fas fa-bell"></i> Configurar Alertas
-                                </a>
-                            </li>
-                            
+
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->is('alerts*') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
                                     <i class="fas fa-bell me-2"></i> Alertas
@@ -123,16 +118,11 @@
                                     @endif
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('sensor-types.create') }}">
-                                    <i class="fas fa-cogs me-1"></i> Crear Tipo de Sensor
-                                </a>
-                            </li>
                             <li class="nav-item mt-3">
                                 <hr class="dropdown-divider bg-light">
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#">
+                                <a class="nav-link {{ request()->is('config*') ? 'active' : '' }}" href="{{ route('config.index') }}">
                                     <i class="fas fa-cog me-2"></i> Configuración
                                 </a>
                             </li>
@@ -151,10 +141,10 @@
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <!-- Pusher para actualización en tiempo real -->
     <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
     <script>
@@ -166,7 +156,7 @@
             forceTLS: true
         });
     </script>
-    
+
     @stack('scripts')
 </body>
 </html>

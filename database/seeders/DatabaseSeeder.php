@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DeviceTypeSeeder::class,
             SensorTypeSeeder::class,
+            SystemSettingsSeeder::class,
         ]);
 
         $this->seedCampuses();

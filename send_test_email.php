@@ -16,7 +16,7 @@ Mail::send('emails.alert', [
     'alert_message' => 'Alerta de peligro',
     'value' => '100'
 ], function ($message) {
-    $message->to(env('RECIPIENT_EMAIL'))
+    $message->to(env('MAIL_TO'))
             ->subject('Prueba de correo');
 });
 

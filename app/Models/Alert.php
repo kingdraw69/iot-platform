@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
@@ -34,13 +35,26 @@ class Alert extends Model
                 'value' => (string) $alertDetails['value'],
             ];
 
-            // Intentar obtener destinatario desde config o variables de entorno.
-            // Algunos tests usan 'recipient_email' en minúsculas, otros usan 'RECIPIENT_EMAIL'. Soportamos ambos.
-            $recipient = config('mail.recipient_email') ?? env('RECIPIENT_EMAIL') ?? env('recipient_email');
+            $recipient = SystemSetting::get('mail_to')
+                ?? config('mail.recipient_email')
+                ?? env('MAIL_TO_ALERT')
+                ?? env('MAIL_TO')
+                ?? env('RECIPIENT_EMAIL')
+                ?? env('recipient_email');
+
+            $fromAddress = SystemSetting::get('mail_from_address', config('mail.from.address'));
+            $fromName = SystemSetting::get('mail_from_name', config('mail.from.name'));
 
             if (! $recipient) {
                 Log::warning('No hay destinatario configurado para alertas peligrosas. Se omitirá el envío de correo.');
                 return false;
+            }
+
+            if ($fromAddress) {
+                config([
+                    'mail.from.address' => $fromAddress,
+                    'mail.from.name' => $fromName,
+                ]);
             }
 
             Log::debug('Enviando alerta por correo a: ' . $recipient);

@@ -10,7 +10,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover" id="sensorsTable">
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -25,24 +25,30 @@
                 </thead>
                 <tbody>
                     @foreach($sensors as $sensor)
-                    <tr>
+                    <tr data-sensor-id="{{ $sensor->id }}">
                         <td>{{ $sensor->name }}</td>
                         <td>{{ $sensor->sensorType->name }}</td>
                         <td>{{ $sensor->device->name }}</td>
                         <td>{{ $sensor->device->classroom->name }}</td>
                         <td>
-                            <span class="badge badge-{{ $sensor->status ? 'success' : 'danger' }}">
+                            <span class="badge bg-{{ $sensor->status ? 'success' : 'danger' }}">
                                 {{ $sensor->status ? 'Activo' : 'Inactivo' }}
                             </span>
                         </td>
-                        <td>
+                        <td class="latest-reading">
                             @if($sensor->readings->count() > 0)
                                 {{ $sensor->readings->first()->value }} {{ $sensor->sensorType->unit }}
                             @else
                                 Sin datos
                             @endif
                         </td>
-                        
+                        <td class="reading-timestamp">
+                            @if($sensor->readings->count() > 0)
+                                {{ $sensor->readings->first()->created_at->format('d/m/Y H:i') }}
+                            @else
+                                Sin datos
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('sensors.show', $sensor) }}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i>
@@ -66,3 +72,43 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Pusher for real-time updates
+    const pusher = new Pusher('{{ env('PUSHER_APP_KEY') }}', {
+        cluster: '{{ env('PUSHER_APP_CLUSTER') }}',
+        forceTLS: true
+    });
+
+    // Function to update sensor reading in the table
+    function updateSensorReading(sensorId, data) {
+        const row = document.querySelector(`tr[data-sensor-id="${sensorId}"]`);
+        if (!row) return;
+
+        const latestReadingCell = row.querySelector('.latest-reading');
+        const timestampCell = row.querySelector('.reading-timestamp');
+
+        if (latestReadingCell && timestampCell) {
+            latestReadingCell.textContent = `${data.value} ${data.unit}`;
+            timestampCell.textContent = new Date(data.reading_time).toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    }
+
+    // Subscribe to all sensor channels
+    @foreach($sensors as $sensor)
+        const channel{{ $sensor->id }} = pusher.subscribe('sensor.{{ $sensor->id }}');
+        channel{{ $sensor->id }}.bind('App\\Events\\NewSensorReading', function(data) {
+            updateSensorReading({{ $sensor->id }}, data);
+        });
+    @endforeach
+});
+</script>
+@endpush

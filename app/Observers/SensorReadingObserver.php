@@ -17,6 +17,10 @@ class SensorReadingObserver
         }
 
         foreach ($triggeredRules as $rule) {
+            if (strtolower($rule->severity ?? '') !== 'danger') {
+                continue;
+            }
+
             $device = $sensorReading->sensor->device;
             $location = $device && $device->classroom ? $device->classroom->name : 'Ubicación desconocida';
 
@@ -30,7 +34,7 @@ class SensorReadingObserver
 
             Alert::sendDangerAlertEmail($alertDetails);
 
-            Log::info('Alerta activada para la lectura del sensor: ' . $sensorReading->id);
+            Log::info('Alerta de peligro activada para la lectura del sensor: ' . $sensorReading->id);
         }
     }
 }

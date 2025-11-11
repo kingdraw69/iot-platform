@@ -7,7 +7,7 @@ use App\Http\Controllers\API\SensorApiController;
 use App\Http\Controllers\API\SensorDataController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SensorController;
-use App\Http\Controllers\API\AlertRuleController;
+use App\Http\Controllers\AlertRuleController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
