@@ -186,14 +186,3 @@ Classroom ───┘             │             │                  │     
 - Publish OpenAPI/Swagger documentation for REST endpoints.
 - Increase automated coverage across API and personalization flows.
 
----
-
-## 👤 Author & Professional Focus
-
-Crafted by **J. Rinconc** as a professional-grade Laravel showcase. The codebase highlights domain-driven thinking, SOLID craftsmanship, and production-ready IoT integrations—ideal for engineering teams and technical recruiters evaluating senior PHP/Laravel talent.
-
----
-
-## 🛡️ License
-
-This project is released under the MIT License. See `LICENSE` for details.
