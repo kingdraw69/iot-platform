@@ -1,61 +1,199 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="320" alt="Laravel Logo">
+  <h1>IoT Platform · Smart Classroom Monitoring</h1>
+  <p>End-to-end IoT monitoring platform built with a clean Laravel 12 architecture.</p>
+</div>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+---
 
-## About Laravel
+## 📌 About the Project
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This repository contains an IoT monitoring platform designed to manage connected devices and sensors across classrooms. The application delivers real-time dashboards, configurable alerting, and an administrative experience that showcases modern Laravel engineering practices: a layered domain architecture, SOLID-compliant services, and an event-driven design that keeps the codebase extensible.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Highlights
+- 🛰️ **Device & Sensor Management** – register, classify, and monitor IoT hardware by classroom or type.
+- 📈 **Real-Time Dashboard** – live metrics and charts powered by Pusher Channels and Chart.js.
+- 🚨 **Rule-Based Alerting** – configurable thresholds, severity levels, and automated danger notifications via email.
+- 🔐 **Role-Aware Access Control** – Laravel Sanctum API tokens, admin middleware, and fine-grained dashboards.
+- 🧪 **Confidence in Code** – feature and unit tests covering alert workflows, email delivery, and dashboard metrics.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 🏗️ Architecture Overview
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Clean MVC + Domain Layering
+The platform follows Laravel’s MVC conventions while introducing dedicated **Domain Services**, **Observers**, and **Event/Listener** pipelines to keep business rules isolated from controllers and views.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **Presentation Layer:** Blade templates and Tailwind/Bootstrap components under `resources/views`.
+- **Application Layer:** REST controllers in `app/Http/Controllers`, form validation, Sanctum guards, and middleware.
+- **Domain Layer:** Business logic encapsulated in services (`app/Services`), observers (`app/Observers`), and domain events (`app/Events`).
+- **Infrastructure Layer:** Eloquent models (`app/Models`), database migrations, factories, and seeders.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Directory Structure at a Glance
+```
+app/
+  Events/           # Domain events for broadcasting & async workflows
+  Http/
+    Controllers/    # Web + API controllers (separated by context)
+    Middleware/     # Role-based access control (EnsureUserIsAdmin)
+  Listeners/        # Event listeners (e.g., UpdateDeviceLastCommunication)
+  Mail/             # Mailable classes for alert notifications
+  Models/           # Eloquent models with relationships and scopes
+  Observers/        # Model observers handling side effects
+  Providers/        # Service providers registering bindings & observers
+  Services/         # Domain services (dashboard metrics, device logic)
 
-## Laravel Sponsors
+resources/views/
+  dashboard/        # Modular dashboard partials (summary, alerts, charts)
+  layouts/          # Reusable layouts and navigation components
+  ...               # CRUD UIs for devices, sensors, alerts, configuration
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+routes/
+  web.php           # Authenticated dashboard, administration, and CRUD routes
+  api.php           # Token-protected endpoints for IoT devices & integrations
 
-### Premium Partners
+database/
+  migrations/       # Schema definitions (devices, sensors, alerts, roles, prefs)
+  factories/        # Model factories for realistic test data
+  seeders/          # Default catalog (device types, sensor types, alert rules)
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## 🧭 SOLID Principles in Practice
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Principle | Implementation | Notes |
+|-----------|----------------|-------|
+| **Single Responsibility** | Domain services (`DashboardMetricsService`, `DeviceService`) encapsulate business rules; observers manage side effects. | Future work: extract email delivery from `Alert` model into a dedicated notification service. |
+| **Open/Closed** | Event-driven architecture (model observers, broadcast events) allows new behaviors without touching existing classes. | Enhancement path: introduce alert strategies for custom rule types. |
+| **Liskov Substitution** | Controllers and models extend Laravel bases without breaking contracts. | Fully compliant. |
+| **Interface Segregation** | Traits (`HasFactory`, `Notifiable`) provide focused capabilities. | Next step: add service interfaces to maximize testability and swapability. |
+| **Dependency Inversion** | Constructor injection and service providers decouple controllers from concrete implementations. | Evolution: adopt repository interfaces for persistence boundaries. |
 
-## Code of Conduct
+**SOLID Score:** 7/10 — strong foundation with a clear roadmap to full decoupling.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## ⚙️ Core Features
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Device & Sensor Lifecycle
+- CRUD for devices, types, classrooms, sensors, and sensor types.
+- Device activation toggles, API key provisioning, MAC/IP tracking, last communication timestamps.
+- User-specific dashboard preferences via `DashboardPreference`.
 
-## License
+### Real-Time Monitoring
+- WebSocket broadcasting (`App\Events\NewSensorReading`) to Pusher Channels.
+- Live charts and alert counters powered by Chart.js and lightweight-charts.
+- Personalized monitors persisted per user.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Alert Engine
+- Configurable rules scoped to sensor types, devices, or individual sensors.
+- Severity levels (`info`, `warning`, `danger`) with danger-level email escalation.
+- Observers (`SensorReadingObserver`, `AlertObserver`) trigger automated workflows.
+- Alert history management, bulk resolution, and unresolved counters in the UI.
+
+### Security & Access Control
+- Laravel Auth with Sanctum tokens for API authentication.
+- Middleware-based role enforcement (`EnsureUserIsAdmin`).
+- API key validation for IoT device ingestion.
+- Comprehensive request validation and structured logging.
+
+### Testing
+- **Feature tests:** alert email workflows, admin access policies, CRUD cases.
+- **Unit tests:** dashboard metrics aggregation, alert evaluation logic.
+- Factories + seeders provide rich fixtures for demos and CI pipelines.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Backend | Laravel 12, PHP 8.2 | MVC framework, dependency injection, queues, events, mailing |
+| Auth & APIs | Laravel Sanctum | SPA authentication and token issuing for devices |
+| Real-Time | Pusher Channels, Laravel Echo | Live sensor streaming and alert broadcasting |
+| Frontend | Vite, Tailwind CSS 4, Bootstrap 5, Chart.js 4, lightweight-charts 5 | Build tooling, responsive UI, interactive visualizations |
+| Database | SQLite (dev) with Eloquent ORM | Schema migrations, relationships, query builder |
+| Tooling | Laravel Pint, PHPUnit 11, Faker, Mockery, Laravel Pail | Code quality, testing, log inspection |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- PHP 8.2+
+- Composer 2+
+- Node.js 20+
+- npm, pnpm, or yarn
+- Pusher credentials (for real-time broadcasting)
+
+### Installation
+```bash
+# PHP dependencies
+composer install
+
+# JavaScript dependencies
+npm install
+
+# Environment bootstrap
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+
+# Run full dev stack (app server, queue, logs, Vite, websocket watcher)
+composer run dev
+```
+
+### Testing
+```bash
+php artisan test
+```
+
+---
+
+## 📦 API Overview
+
+- `POST /api/sensors/{sensor}/readings` – ingest sensor values (API key protected).
+- `GET /api/devices` – list devices with status and metadata.
+- `GET /api/sensors/{sensor}/latest-readings` – retrieve rolling sensor data.
+- `GET /api/alerts/active` – expose current alert counts for dashboards.
+- `POST /api/alert-rules/store` – register new alert rules programmatically.
+
+All endpoints leverage Sanctum guards, API key validation, and rich validation responses so hardware agents and partner systems can integrate securely.
+
+---
+
+## 🧩 Domain Model Snapshot
+
+```
+User ──1─────┐
+             │
+DashboardPreference
+
+DeviceType ──┐
+             ├── Device ──┬── Sensor ──┬── SensorReading ──┬── Alert ──┬── (emails)
+Classroom ───┘             │             │                  │          │
+                            └── DeviceStatusLog             └── AlertRule
+```
+
+---
+
+## 📚 Roadmap
+
+- Extract alert evaluation into strategy classes for richer rule types.
+- Introduce repository interfaces and DTOs for clearer domain boundaries.
+- Expand notification channels (SMS, Slack) via a `NotificationChannel` interface.
+- Publish OpenAPI/Swagger documentation for REST endpoints.
+- Increase automated coverage across API and personalization flows.
+
+---
+
+## 👤 Author & Professional Focus
+
+Crafted by **J. Rinconc** as a professional-grade Laravel showcase. The codebase highlights domain-driven thinking, SOLID craftsmanship, and production-ready IoT integrations—ideal for engineering teams and technical recruiters evaluating senior PHP/Laravel talent.
+
+---
+
+## 🛡️ License
+
+This project is released under the MIT License. See `LICENSE` for details.
