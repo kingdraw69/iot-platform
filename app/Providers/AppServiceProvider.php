@@ -21,8 +21,5 @@ class AppServiceProvider extends ServiceProvider
     {
         \Illuminate\Pagination\Paginator::defaultView('pagination::custom');
         \Illuminate\Pagination\Paginator::defaultSimpleView('pagination::custom');
-
-        // Register the SensorReadingObserver
-        \App\Models\SensorReading::observe(\App\Observers\SensorReadingObserver::class);
     }
 }

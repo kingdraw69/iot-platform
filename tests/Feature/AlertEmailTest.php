@@ -10,6 +10,7 @@ use App\Models\Alert;
 use App\Mail\DangerAlertMail;
 use App\Models\Sensor;
 use App\Models\AlertRule;
+use App\Models\SystemSetting;
 
 class AlertEmailTest extends TestCase
 {
@@ -94,5 +95,28 @@ class AlertEmailTest extends TestCase
         ]);
 
         Mail::assertNotSent(DangerAlertMail::class);
+    }
+
+    public function testSendDangerAlertUsesSystemSettingRecipient()
+    {
+        Mail::fake();
+
+        SystemSetting::set('mail_to', 'danger@example.test', 'string', 'mail');
+
+        $sensorReading = SensorReading::factory()->create();
+
+        $alertDetails = [
+            'device' => $sensorReading->sensor->device->name,
+            'location' => $sensorReading->sensor->device->classroom->name,
+            'sensor' => $sensorReading->sensor->name,
+            'alert_message' => 'Valor fuera de rango',
+            'value' => $sensorReading->value,
+        ];
+
+        Alert::sendDangerAlertEmail($alertDetails);
+
+        Mail::assertSent(DangerAlertMail::class, function ($mail) {
+            return $mail->hasTo('danger@example.test');
+        });
     }
 }

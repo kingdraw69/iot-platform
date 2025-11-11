@@ -87,6 +87,14 @@ class SystemSettingsSeeder extends Seeder
                 'description' => 'Dirección de correo para alertas',
                 'is_public' => false,
             ],
+            [
+                'key' => 'mail_enabled',
+                'value' => '1',
+                'type' => 'boolean',
+                'group' => 'mail',
+                'description' => 'Estado del sistema de envío de emails',
+                'is_public' => false,
+            ],
 
             // Configuración de Alertas
             [

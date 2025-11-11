@@ -7,11 +7,13 @@ use App\Http\Controllers\SensorController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AlertRuleController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\EmailConfigController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\SensorTypeController;
 use App\Http\Controllers\DashboardPreferenceController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\DeviceTypeController;
+use App\Http\Controllers\UserRoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,4 +81,11 @@ Route::middleware('auth')->group(function () {
     // Configuración
     Route::get('config', [ConfigController::class, 'index'])->name('config.index');
     Route::post('config', [ConfigController::class, 'update'])->name('config.update');
+    Route::get('config/user-roles', [UserRoleController::class, 'index'])->name('config.user-roles.index');
+    Route::patch('config/user-roles/{user}', [UserRoleController::class, 'update'])->name('config.user-roles.update');
+
+    // Configuración de Email
+    Route::get('email-config', [EmailConfigController::class, 'index'])->name('email-config.index');
+    Route::put('email-config', [EmailConfigController::class, 'update'])->name('email-config.update');
+    Route::post('email-config/test', [EmailConfigController::class, 'testEmail'])->name('email-config.test');
 });

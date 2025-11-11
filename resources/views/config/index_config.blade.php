@@ -29,6 +29,9 @@
             <form action="{{ route('config.update') }}" method="POST">
                 @csrf
 
+                <!-- Campo oculto para mail_enabled -->
+                <input type="hidden" id="mail_enabled_hidden" name="mail_enabled" value="{{ $settings['mail_enabled'] ? 1 : 0 }}">
+
                 <!-- Configuración General -->
                 <div class="card mb-4">
                     <div class="card-header bg-light">
@@ -60,33 +63,39 @@
 
                 <!-- Configuración de Email -->
                 <div class="card mb-4">
-                    <div class="card-header bg-light">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-envelope me-2"></i> Configuración de Email</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="mail_enabled_toggle" 
+                                {{ $settings['mail_enabled'] ? 'checked' : '' }}
+                                onchange="updateEmailStatus(this)">
+                            <label class="form-check-label" for="mail_enabled_toggle" id="toggleLabel">
+                                <span class="badge" id="statusBadge" style="background-color: {{ $settings['mail_enabled'] ? '#198754' : '#6c757d' }}">
+                                    {{ $settings['mail_enabled'] ? 'Activo' : 'Desactivado' }}
+                                </span>
+                            </label>
+                        </div>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-info border-0 mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Nota:</strong> Para cambiar el servidor SMTP, credenciales y otros parámetros de email, dirígete a 
+                            <a href="{{ route('email-config.index') }}" class="alert-link">Gestión de Configuración de Email</a>.
+                        </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="mail_from" class="form-label">Email Remitente</label>
-                                <input type="email" class="form-control @error('mail_from') is-invalid @enderror" 
-                                    id="mail_from" name="mail_from" 
-                                    value="{{ old('mail_from', $settings['mail_from']) }}" required>
-                                @error('mail_from')
-                                    <span class="invalid-feedback">{{ $message }}</span>
-                                @enderror
+                                <input type="email" class="form-control-plaintext" 
+                                    id="mail_from" 
+                                    value="{{ $settings['mail_from'] }}" readonly>
                                 <small class="text-muted">Email desde el que se enviarán las notificaciones</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="mail_to" class="form-label">Email de Alertas</label>
-                                <input type="email" class="form-control @error('mail_to') is-invalid @enderror"
-                                    id="mail_to" name="mail_to"
-                                    value="{{ old('mail_to', $settings['mail_to']) }}" required>
-                                @error('mail_to')
-                                    <span class="invalid-feedback">{{ $message }}</span>
-                                @enderror
+                                <input type="email" class="form-control-plaintext"
+                                    id="mail_to"
+                                    value="{{ $settings['mail_to'] }}" readonly>
                                 <small class="text-muted">Email donde se recibirán las alertas del sistema</small>
-                                <div class="mt-2">
-                                    <strong>Email actual:</strong> <span class="text-primary">{{ $settings['mail_to'] ?? 'No configurado' }}</span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -126,12 +135,20 @@
                 </div>
 
                 <!-- Configuración Avanzada -->
-                <div class="card mb-4">
+                <div class="card mb-4" id="advanced-config">
                     <div class="card-header bg-light">
                         <h5 class="mb-0"><i class="fas fa-tools me-2"></i> Configuración Avanzada</h5>
                     </div>
                     <div class="card-body">
                         <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="d-grid">
+                                    <a href="{{ route('email-config.index') }}" class="btn btn-outline-danger">
+                                        <i class="fas fa-envelope me-2"></i> Gestionar Configuración de Email
+                                    </a>
+                                    <small class="text-muted mt-1">Configura los parámetros SMTP y credenciales de correo</small>
+                                </div>
+                            </div>
                             <div class="col-md-4 mb-3">
                                 <div class="d-grid">
                                     <a href="{{ route('sensor-types.create') }}" class="btn btn-outline-primary">
@@ -148,6 +165,8 @@
                                     <small class="text-muted mt-1">Crear, editar y eliminar tipos de dispositivos IoT</small>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="d-grid">
                                     <a href="{{ route('classrooms.create') }}" class="btn btn-outline-success">
@@ -156,14 +175,20 @@
                                     <small class="text-muted mt-1">Agregar y gestionar ubicaciones de aulas del campus</small>
                                 </div>
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="d-grid">
                                     <a href="{{ route('alert-rules.create') }}" class="btn btn-outline-warning">
                                         <i class="fas fa-bell me-2"></i> Configurar Reglas de Alerta
                                     </a>
                                     <small class="text-muted mt-1">Definir reglas para generar alertas automáticas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="d-grid">
+                                    <a href="{{ route('config.user-roles.index') }}" class="btn btn-outline-dark">
+                                        <i class="fas fa-users-cog me-2"></i> Gestionar Roles de Usuarios
+                                    </a>
+                                    <small class="text-muted mt-1">Asigna o revoca permisos de administrador</small>
                                 </div>
                             </div>
                         </div>
@@ -211,88 +236,6 @@
                     </button>
                 </div>
             </form>
-
-            <!-- Configuración Avanzada -->
-            <div class="card mt-4" id="advanced-configuration">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0"><i class="fas fa-tools me-2"></i> Configuración Avanzada</h5>
-                        <small class="text-muted">Administra recursos adicionales sin salir del panel</small>
-                    </div>
-                    <a href="{{ route('device-types.create') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-cogs me-1"></i> Abrir gestión completa
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <div class="col-lg-5">
-                            <div class="border rounded p-3 h-100">
-                                <h6 class="text-uppercase text-muted mb-3">Resumen</h6>
-                                <p class="mb-1">
-                                    <i class="fas fa-tag me-2 text-primary"></i>
-                                    Tipos de dispositivos registrados:
-                                    <strong>{{ $deviceTypes->count() }}</strong>
-                                </p>
-                                <p class="mb-3">
-                                    <i class="fas fa-plug me-2 text-success"></i>
-                                    Dispositivos asociados:
-                                    <strong>{{ $deviceTypes->sum('devices_count') }}</strong>
-                                </p>
-                                <p class="text-muted mb-0">
-                                    Usa la gestión completa para crear nuevos tipos, asignar descripciones
-                                    y mantener organizada la plataforma.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-lg-7">
-                            <h6 class="text-uppercase text-muted mb-3">Tipos de dispositivos</h6>
-                            @if($deviceTypes->isEmpty())
-                                <div class="text-center py-4">
-                                    <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
-                                    <p class="mb-1">Aún no registras tipos de dispositivos</p>
-                                    <small class="text-muted">Crea uno nuevo desde la gestión completa.</small>
-                                </div>
-                            @else
-                                <div class="table-responsive">
-                                    <table class="table table-sm align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Nombre</th>
-                                                <th>Descripción</th>
-                                                <th class="text-center">Dispositivos</th>
-                                                <th class="text-end">Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($deviceTypes as $deviceType)
-                                                <tr>
-                                                    <td class="fw-semibold">{{ $deviceType->name }}</td>
-                                                    <td>{{ $deviceType->description ?: 'Sin descripción' }}</td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-info">{{ $deviceType->devices_count }}</span>
-                                                    </td>
-                                                    <td class="text-end">
-                                                        <a href="{{ route('device-types.edit', $deviceType) }}" class="btn btn-sm btn-outline-secondary me-2">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <form action="{{ route('device-types.destroy', $deviceType) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar el tipo {{ $deviceType->name }}?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger" {{ $deviceType->devices_count > 0 ? 'disabled' : '' }}>
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -319,10 +262,43 @@
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
 
+    .form-control-plaintext {
+        display: block;
+        padding: 0.625rem 0;
+        margin-bottom: 0.5rem;
+        color: #6c757d;
+        font-weight: 500;
+        border: none;
+        background-color: transparent;
+        cursor: default;
+    }
+
+    .form-control-plaintext:focus {
+        outline: none;
+        box-shadow: none;
+    }
+
     small.text-muted {
         font-size: 0.875rem;
         display: block;
         margin-top: 0.25rem;
     }
 </style>
+
+<script>
+    function updateEmailStatus(checkbox) {
+        const hiddenInput = document.getElementById('mail_enabled_hidden');
+        const statusBadge = document.getElementById('statusBadge');
+        
+        if (checkbox.checked) {
+            hiddenInput.value = 1;
+            statusBadge.textContent = 'Activo';
+            statusBadge.style.backgroundColor = '#198754';
+        } else {
+            hiddenInput.value = 0;
+            statusBadge.textContent = 'Desactivado';
+            statusBadge.style.backgroundColor = '#6c757d';
+        }
+    }
+</script>
 @endsection

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\DangerAlertMail;
+use App\Models\SystemSetting;
 
 class Alert extends Model
 {
